@@ -82,5 +82,47 @@
     "find": "fixtures.push(f(FixtureKind::Lamp, 840, 70, -120, warm, 70, 140, true));",
     "replace": "fixtures.push(f(FixtureKind::Lamp, 820, 70, 80, warm, 70, 140, true));",
     "test": "the_cursed_door_stands_in_moonlight_only"
+  },
+  {
+    "name": "the wait is the current menace's (CH-Q26)",
+    "file": "crates/core/src/world.rs",
+    "find": "self.scare_wait = (self.last_scare + wait - self.tick).clamp(0, wait) as i32;",
+    "replace": "self.scare_wait = (self.last_scare + 3600 - self.tick).clamp(0, 3600) as i32;",
+    "test": "the_directors_wait_is_the_ceiling_of_the_menace_you_are_in_now"
+  },
+  {
+    "name": "never the same kind twice running (CH-Q23)",
+    "file": "crates/core/src/world.rs",
+    "find": "let choices = if fresh.is_empty() { choices } else { fresh };",
+    "replace": "let _ = fresh;",
+    "test": "the_director_never_uses_the_same_kind_twice_running"
+  },
+  {
+    "name": "a mannequin already facing you is not turned (CH-Q24)",
+    "file": "crates/core/src/world.rs",
+    "find": ".filter(|(_, m)| fx::wrap(m.yaw - yaw_of(p.sub(m.at))).abs() > fx::deg(20))",
+    "replace": "",
+    "test": "the_director_turns_the_nearest_mannequin_out_of_view_not_yet_facing_you"
+  },
+  {
+    "name": "the nearest mannequin is turned (CH-Q24)",
+    "file": "crates/core/src/world.rs",
+    "find": ".min_by_key(|(_, m)| m.at.sub(p).len_xz())",
+    "replace": ".max_by_key(|(_, m)| m.at.sub(p).len_xz())",
+    "test": "the_director_turns_the_nearest_mannequin_out_of_view_not_yet_facing_you"
+  },
+  {
+    "name": "glimpses vary inside the screen (CH-Q25)",
+    "file": "crates/core/src/world.rs",
+    "find": "let off = GLIMPSE_NEAR + self.rng.below((GLIMPSE_FAR - GLIMPSE_NEAR) as u32) as i32;",
+    "replace": "let off = fx::deg(55);",
+    "test": "glimpses_fall_where_the_screen_shows_them_and_twenty_seconds_apart"
+  },
+  {
+    "name": "glimpses 20 s apart (CH-Q25)",
+    "file": "crates/core/src/world.rs",
+    "find": "self.glimpse_wait = 20 * HZ as i32;",
+    "replace": "self.glimpse_wait = 0;",
+    "test": "glimpses_fall_where_the_screen_shows_them_and_twenty_seconds_apart"
   }
 ]

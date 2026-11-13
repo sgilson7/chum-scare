@@ -217,7 +217,7 @@ fn every_scare_the_director_makes_while_loading_is_out_of_view() {
     let mut heard = 0;
     for t in 0..20_000 {
         w.mode = Mode::Reload;
-        w.scare_wait = 0;
+        w.last_scare = i64::MIN / 2;
         w.yaw = fx::deg((t * 7) % 360);
         w.director();
         for v in &w.voices {
@@ -628,4 +628,106 @@ fn the_cursed_door_stands_in_moonlight_only() {
     w.flashlight.on = false;
     let at = v3(int(89), ONE * 16 / 10, 0);
     assert_eq!(w.lit_at(at), ONE / 6 + 55 * ONE / 100);
+}
+
+#[test]
+fn the_directors_wait_is_the_ceiling_of_the_menace_you_are_in_now() {
+    // CH-Q26: a scare 1900 ticks ago; at menace 1 (ceiling 2 a minute) the
+    // wait is 1800 ticks, so it is over; back at menace 0 (1 a minute) it
+    // is 3600, so 1700 are left
+    let mut w = playing();
+    w.armed = false;
+    w.last_scare = w.tick - 1900;
+    w.body.origin = v3(int(20), 0, 0);
+    assert_eq!(w.menace(), 1);
+    w.director();
+    assert_eq!(w.scare_wait, 0);
+    w.body.origin = v3(int(5), 0, 0);
+    assert_eq!(w.menace(), 0);
+    w.director();
+    assert_eq!(w.scare_wait, 1700);
+}
+
+#[test]
+fn the_director_never_uses_the_same_kind_twice_running() {
+    // CH-Q23: in the wings, loading, many kinds in reach
+    let mut w = playing();
+    w.body.origin = v3(int(20), 0, 0);
+    w.armed = true;
+    w.pitch = fx::deg(-60);
+    let mut kinds = Vec::new();
+    for t in 0..40_000 {
+        w.mode = Mode::Reload;
+        w.last_scare = i64::MIN / 2;
+        w.yaw = fx::deg((t * 7) % 360);
+        let before = w.last_kind;
+        let used: i32 = w.kinds_used.iter().sum();
+        w.director();
+        if w.kinds_used.iter().sum::<i32>() > used {
+            assert_ne!(
+                Some(w.last_kind),
+                Some(before).filter(|b| b.is_some()),
+                "twice running"
+            );
+            kinds.push(w.last_kind.unwrap());
+        }
+        w.voices.clear();
+        w.pending_steps.clear();
+    }
+    assert!(kinds.len() > 30, "{}", kinds.len());
+    // each kind used differs from the most used by at most a few
+    let used: Vec<i32> = w.kinds_used.iter().copied().filter(|n| *n > 0).collect();
+    assert!(used.len() >= 3, "{used:?}");
+}
+
+#[test]
+fn the_director_turns_the_nearest_mannequin_out_of_view_not_yet_facing_you() {
+    // CH-Q24, worked by hand: at (20, 0) looking along −z (yaw 0), the
+    // mannequins at (20, 8), (24, 7), (12, 6) and (28, 8.5) are behind you.
+    // (20, 8) faces +z (180°), away from you, and is nearest (8 m): it turns
+    let mut w = playing();
+    w.body.origin = v3(int(20), 0, 0);
+    w.yaw = 0;
+    w.pitch = 0;
+    let eye = w.eye();
+    assert_eq!(w.mannequin_to_turn(eye), Some(0));
+    // once it faces you, the next nearest not facing you: (24, 7), 8.1 m
+    w.mall.props[0].yaw = yaw_of(w.body.origin.sub(w.mall.props[0].at));
+    assert_eq!(w.mannequin_to_turn(eye), Some(1));
+    // look toward them (yaw 180°, along +z): all four are in view
+    w.yaw = fx::deg(180);
+    assert_eq!(w.mannequin_to_turn(eye), None);
+}
+
+#[test]
+fn glimpses_fall_where_the_screen_shows_them_and_twenty_seconds_apart() {
+    // CH-Q25: 35° to 48° off the view (inside a 16:9 screen's 51° edge),
+    // within a degree of the angles' rounding, 5 to 12 m away, at least
+    // 20 s apart
+    let mut w = playing();
+    w.body.origin = v3(int(75), 0, int(10));
+    w.yaw = fx::deg(-90);
+    let mut last: Option<i64> = None;
+    let mut n = 0;
+    for _ in 0..60 * 60 * HZ {
+        w.tick += 1;
+        w.chase();
+        if w.spirit.glimpse == 20 {
+            let to = w.spirit.at.sub(w.body.origin);
+            let off = fx::wrap(yaw_of(to) - w.yaw).abs();
+            assert!(
+                off >= fx::deg(34) && off <= fx::deg(49),
+                "{}",
+                off * 360 / fx::TURN
+            );
+            let d = to.len_xz();
+            assert!(d >= int(5) - 2 && d <= int(12) + 2, "{}", fx::decimal(d, 2));
+            if let Some(t) = last {
+                assert!(w.tick - t >= 20 * HZ, "{}", w.tick - t);
+            }
+            last = Some(w.tick);
+            n += 1;
+        }
+    }
+    assert!(n > 20, "{n}");
 }

@@ -242,6 +242,14 @@ pub struct World {
     pub armed: bool,
     pub loaded_now: i32,
     pub scare_wait: i32,
+    /// the tick of the director's last scare; its wait counts from here at
+    /// the menace you are in now (CH-Q26)
+    pub last_scare: i64,
+    /// how often each kind has been used, and the last (CH-Q23)
+    pub kinds_used: [i32; mall::ScareKind::COUNT],
+    pub last_kind: Option<ScareKind>,
+    /// ticks until the spirit may be glimpsed again (CH-Q25)
+    pub glimpse_wait: i32,
     pub pending_steps: Vec<(i64, V3)>,
     pub debris: Vec<Debris>,
     pub voices: Vec<Voice>,
@@ -334,6 +342,10 @@ impl World {
             armed: false,
             loaded_now: 0,
             scare_wait: 0,
+            last_scare: i64::MIN / 2,
+            kinds_used: [0; mall::ScareKind::COUNT],
+            last_kind: None,
+            glimpse_wait: 0,
             pending_steps: Vec::new(),
             debris: Vec::new(),
             voices: Vec::new(),
@@ -1035,11 +1047,14 @@ impl World {
     /// while the hands are busy (and now and then otherwise), always out of
     /// view (CH-4) and only where a sound can reach you.
     fn director(&mut self) {
-        self.scare_wait = (self.scare_wait - 1).max(0);
+        let menace = self.menace();
+        // the wait is the ceiling of the menace you are in now, counted from
+        // the last scare: walking deeper shortens it (CH-Q26)
+        let wait = 3600 / per_minute(menace) as i64;
+        self.scare_wait = (self.last_scare + wait - self.tick).clamp(0, wait) as i32;
         if !self.armed || self.scare_wait > 0 || self.spirit.chasing {
             return;
         }
-        let menace = self.menace();
         let busy = self.hands_busy();
         // chance a tick, in 1/10000ths: busy rises with each round loaded
         let per = if busy {
@@ -1075,14 +1090,33 @@ impl World {
                 tick: self.tick,
             });
             self.flinch = ONE / 2;
-            self.scare_wait = 3600 / per_minute(menace);
+            self.last_scare = self.tick;
+            self.scare_wait = wait as i32;
             return;
         }
-        if choices.is_empty() {
+        // CH-Q23 A: never the kind just used (when another is in reach),
+        // and among the rest the least used
+        let fresh: Vec<usize> = choices
+            .iter()
+            .copied()
+            .filter(|&i| Some(self.mall.scares[i].kind) != self.last_kind)
+            .collect();
+        let choices = if fresh.is_empty() { choices } else { fresh };
+        let least = choices
+            .iter()
+            .map(|&i| self.kinds_used[self.mall.scares[i].kind.index()])
+            .min();
+        let Some(least) = least else {
             return;
-        }
+        };
+        let choices: Vec<usize> = choices
+            .into_iter()
+            .filter(|&i| self.kinds_used[self.mall.scares[i].kind.index()] == least)
+            .collect();
         let pick = choices[self.rng.below(choices.len() as u32) as usize];
         let s = self.mall.scares[pick];
+        self.kinds_used[s.kind.index()] += 1;
+        self.last_kind = Some(s.kind);
         match s.kind {
             ScareKind::DoorCreak => self.say("door_creak", s.at, ONE * 6 / 10, Some("sub_door")),
             ScareKind::Fall => {
@@ -1123,22 +1157,35 @@ impl World {
                 }
             }
         }
-        // a mannequin turns to face you, somewhere you are not looking
+        // a mannequin turns to face you, somewhere you are not looking:
+        // the nearest within 15 m that is out of view and not already
+        // facing you (CH-Q24 A)
         if menace >= 2 {
-            let p = self.body.origin;
-            let yaw = self.yaw;
-            let pitch = self.pitch;
-            let eye2 = eye;
-            if let Some(m) = self
-                .mall
-                .props
-                .iter_mut()
-                .find(|m| m.kind == PropKind::Mannequin && off_view(yaw, pitch, eye2, m.at) > HALF_VIEW)
-            {
+            if let Some(i) = self.mannequin_to_turn(eye) {
+                let p = self.body.origin;
+                let m = &mut self.mall.props[i];
                 m.yaw = yaw_of(p.sub(m.at));
             }
         }
-        self.scare_wait = 3600 / per_minute(menace);
+        self.last_scare = self.tick;
+        self.scare_wait = wait as i32;
+    }
+
+    /// The mannequin the director would turn (CH-Q24 A).
+    pub fn mannequin_to_turn(&self, eye: V3) -> Option<usize> {
+        let p = self.body.origin;
+        self.mall
+            .props
+            .iter()
+            .enumerate()
+            .filter(|(i, m)| m.kind == PropKind::Mannequin && Some(*i) != self.possessed)
+            .filter(|(_, m)| m.at.sub(p).len_xz() < MANNEQUIN_REACH)
+            .filter(|(_, m)| {
+                off_view(self.yaw, self.pitch, eye, m.at.add(v3(0, ONE * 15 / 10, 0))) > HALF_VIEW
+            })
+            .filter(|(_, m)| fx::wrap(m.yaw - yaw_of(p.sub(m.at))).abs() > fx::deg(20))
+            .min_by_key(|(_, m)| m.at.sub(p).len_xz())
+            .map(|(i, _)| i)
     }
 
     fn steps_due(&mut self) {
@@ -1419,15 +1466,26 @@ impl World {
         if !self.spirit.chasing {
             // glimpses at the edge of the view (menace 3 and 4)
             self.spirit.glimpse = (self.spirit.glimpse - 1).max(0);
-            if self.menace() >= 3 && self.spirit.glimpse == 0 && self.rng.chance(1, 900) {
-                let side = if self.rng.chance(1, 2) {
-                    fx::deg(55)
-                } else {
-                    -fx::deg(55)
-                };
+            self.glimpse_wait = (self.glimpse_wait - 1).max(0);
+            if self.menace() >= 3 && self.glimpse_wait == 0 && self.rng.chance(1, 900) {
+                // CH-Q25: anywhere from GLIMPSE_NEAR to GLIMPSE_FAR off the
+                // view, 5 to 12 m off, where the eye can see it, and not
+                // again for 20 s
+                let off = GLIMPSE_NEAR + self.rng.below((GLIMPSE_FAR - GLIMPSE_NEAR) as u32) as i32;
+                let side = if self.rng.chance(1, 2) { off } else { -off };
                 let dir = facing(self.yaw + side, 0);
-                self.spirit.at = self.body.origin.add(dir.scale(int(7)));
-                self.spirit.glimpse = 20;
+                let mut d = int(5) + self.rng.below(int(7) as u32) as i32;
+                let eye = self.eye();
+                while d >= int(5) {
+                    let at = self.body.origin.add(dir.scale(d));
+                    if self.clear_line(eye, at.add(v3(0, ONE, 0))) {
+                        self.spirit.at = at;
+                        self.spirit.glimpse = 20;
+                        self.glimpse_wait = 20 * HZ as i32;
+                        break;
+                    }
+                    d -= ONE;
+                }
             }
             return;
         }
@@ -1611,6 +1669,13 @@ pub fn per_minute(menace: i32) -> i32 {
 /// The least a cultist can make out (T6): crouched with the light off, a
 /// few metres off in lamplight, you are a shadow.
 pub const NOTICE_FLOOR: Fx = ONE / 30;
+
+/// Mannequins farther than this are not turned by the director (CH-Q24).
+pub const MANNEQUIN_REACH: Fx = 15 * ONE;
+/// Glimpses of the spirit fall this far off the view (CH-Q25): inside a
+/// 16:9 screen's edge (51° at a 70° vertical view), never at its centre.
+pub const GLIMPSE_NEAR: i32 = fx::deg(35);
+pub const GLIMPSE_FAR: i32 = fx::deg(48);
 
 /// How far a sign turns toward you each tick of the chase: 30° a second.
 pub const SIGN_TURN: i32 = fx::deg(1) / 2;

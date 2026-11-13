@@ -147,6 +147,14 @@ pub enum ScareKind {
     Glass,
 }
 
+impl ScareKind {
+    pub const COUNT: usize = 6;
+
+    pub fn index(self) -> usize {
+        self as usize
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScarePoint {
     pub kind: ScareKind,
@@ -690,6 +698,10 @@ pub fn mall() -> Mall {
         s(ScareKind::Fall, 160, -30, 0),
         s(ScareKind::Steps, 60, 0, 1),
         s(ScareKind::Steps, 200, 0, 1),
+        // CH-Q26 A: three quiet ones in the wings
+        s(ScareKind::Shutter, 150, -50, 1),
+        s(ScareKind::DoorCreak, 270, 50, 1),
+        s(ScareKind::Steps, 290, -30, 1),
         s(ScareKind::Shutter, 240, 50, 1),
         s(ScareKind::Shutter, 380, -50, 1),
         s(ScareKind::Fall, 240, 120, 1),

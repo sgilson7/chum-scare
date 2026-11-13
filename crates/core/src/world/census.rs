@@ -276,7 +276,7 @@ struct Seen {
     props: Vec<(V3, i32)>,
     possessed: Option<usize>,
     broken: usize,
-    scare_wait: i32,
+    last_scare: i64,
 }
 
 impl Seen {
@@ -291,7 +291,7 @@ impl Seen {
                 .iter()
                 .filter(|s| **s == crate::lights::State::Broken)
                 .count(),
-            scare_wait: w.scare_wait,
+            last_scare: w.last_scare,
         }
     }
 
@@ -333,8 +333,8 @@ impl Seen {
                 note(source, v.recipe, "sound", Some(v.at), None);
             }
         }
-        // the director fired this tick: it set its wait again
-        if w.scare_wait > self.scare_wait {
+        // the director fired this tick
+        if w.last_scare != self.last_scare {
             note("director", "scare", "decision", None, Some(0));
         }
         if w.spirit.glimpse == 20 && self.glimpse != 20 {

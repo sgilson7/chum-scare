@@ -25,11 +25,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 RUNS = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "notes/census/runs.jsonl"
 OUT = ROOT / "notes/census"
 
-# the view's half-width is 58° (world::HALF_VIEW); the bands a player feels
+# a 16:9 screen's edge is 51° off centre at the 70° vertical view
+# (view::FOV); the bands a player feels
 BANDS = [
     ("centre", "middle of the screen (under 30°)", 0, 30),
-    ("edge", "edge of the screen (30° to 58°)", 30, 58),
-    ("beside", "just off the screen (58° to 110°)", 58, 110),
+    ("edge", "edge of the screen (30° to 51°)", 30, 51),
+    ("beside", "just off the screen (51° to 110°)", 51, 110),
     ("behind", "behind you (110° and more)", 110, 181),
 ]
 # designed ceiling: world::per_minute
