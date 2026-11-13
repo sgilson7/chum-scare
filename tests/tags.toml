@@ -11,7 +11,7 @@
 # Steps: fmt, clippy, core, build, wasm, art, notebook, context, journal, browser, all.
 # After Peter's quick check in Ape Race, Honey Hole and Crabble.
 
-ignore = [".gitignore", "notes/**", ".claude/**", "LICENSE*", "README.md", "LICENSES.md", "MEASUREMENTS.md", "DECISIONS.md"]
+ignore = ["builder/**", "engine/**", "refs/**", "OPENING.md", ".gitignore", "notes/**", ".claude/**", "LICENSE*", "README.md", "LICENSES.md", "MEASUREMENTS.md", "DECISIONS.md"]
 
 [[rule]]
 name = "the core and the shim"

@@ -6,4 +6,5 @@ Compare at least one result with a case worked out by hand. **Severity** is *blo
 
 | # | Request, in the person's words | Expected | What happened | Severity | Cost | Disposition |
 | --- | --- | --- | --- | --- | --- | --- |
-| T1 | | | | | | |
+| T1 | CH-Q8: B (one more box of six hidden in a store off the route) | A spare box in Video Vault, taken with E | Built: `PropKind::Spare`, `World::modes` | wanted | small | done |
+| T2 | CH-Q12 note: "cultists should be shootable as well with your gun" | One hit drops a cultist; the shot alerts the rest | Built: `World::fire`, test `a_shot_cultist_falls` | wanted | small | done |
