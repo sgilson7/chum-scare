@@ -9,7 +9,7 @@ use crate::fx::{self, int, Fx, ONE};
 use crate::geom::{facing, v3, yaw_of, V3};
 use crate::input::{Input, ALT, CROUCH, FIRE, FORWARD, SHAKE, SPRINT, USE};
 use crate::lights::{Flashlight, Lights};
-use crate::mall::{self, mall, FixtureKind, Mall, PropKind, ScareKind};
+use crate::mall::{self, mall, CurioKind, FixtureKind, Mall, PropKind, ScareKind};
 use crate::movement::{Body, Mover, TUNING};
 use crate::rng::Rng;
 use crate::trace::{trace_box, Scratch};
@@ -149,6 +149,58 @@ pub struct Spirit {
     pub chase_ticks: i32,
 }
 
+/// Where a curio is now and what it has done (T12).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CurioState {
+    pub at: V3,
+    pub yaw: i32,
+    /// how many times it has been used
+    pub uses: i32,
+    /// the music box or the telephone has answered; it does not again (the
+    /// toy and the camera count their uses instead)
+    pub spent: bool,
+}
+
+/// The little girl a curio shows (T12): where she stands, how many ticks
+/// she has left, and whether she goes once she is looked at.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Phantom {
+    pub at: V3,
+    pub yaw: i32,
+    pub ticks: i32,
+    pub until_seen: bool,
+}
+
+/// Where a cued sound is made: in the world, in the head, or a distance
+/// behind wherever the player is when it is due.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Place {
+    At(V3),
+    Head(V3),
+    Behind(Fx),
+    /// wherever the curio is: on its counter, the floor, or in your hand
+    Curio(usize),
+}
+
+/// Something a curio set going that happens later.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Cue {
+    Sound {
+        recipe: &'static str,
+        place: Place,
+        loud: Fx,
+        mark: Option<&'static str>,
+    },
+    /// the girl, `ahead` metres along the view turned by `side`, for
+    /// `ticks`; she giggles when she comes
+    Girl {
+        ahead: Fx,
+        side: i32,
+        ticks: i32,
+        until_seen: bool,
+    },
+}
+
 /// A sound made this tick, before it is placed for the listener.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Voice {
@@ -251,6 +303,15 @@ pub struct World {
     /// ticks until the spirit may be glimpsed again (CH-Q25)
     pub glimpse_wait: i32,
     pub pending_steps: Vec<(i64, V3)>,
+    /// the curios (T12): one state each, the one in your hand, the girl,
+    /// the camera's flash and what is still to happen; whether the
+    /// telephone has started ringing
+    pub curios: Vec<CurioState>,
+    pub held: Option<usize>,
+    pub phantom: Option<Phantom>,
+    pub flash: i32,
+    pub cues: Vec<(i64, Cue)>,
+    pub rang: bool,
     pub debris: Vec<Debris>,
     pub voices: Vec<Voice>,
     pub marks: Vec<Mark>,
@@ -347,6 +408,21 @@ impl World {
             last_kind: None,
             glimpse_wait: 0,
             pending_steps: Vec::new(),
+            curios: m
+                .curios
+                .iter()
+                .map(|c| CurioState {
+                    at: c.at,
+                    yaw: c.yaw,
+                    uses: 0,
+                    spent: false,
+                })
+                .collect(),
+            held: None,
+            phantom: None,
+            flash: 0,
+            cues: Vec::new(),
+            rang: false,
             debris: Vec::new(),
             voices: Vec::new(),
             marks: Vec::new(),
@@ -650,7 +726,11 @@ impl World {
             _ => {}
         }
         if fresh_fire && self.mode == Mode::Look && !self.flashlight.shaking {
-            self.fire();
+            if let Some(i) = self.held {
+                self.use_curio(i);
+            } else {
+                self.fire();
+            }
         }
         self.revolver.kick = (self.revolver.kick - 1).max(0);
         self.flinch = fx::approach(self.flinch, 0, ONE / 36);
@@ -666,6 +746,7 @@ impl World {
             self.say("pop_glass", at, ONE * 7 / 10, None);
         }
         self.steps_due();
+        self.curio_time();
         let moving = self.body.speed() > ONE / 3;
         let want = if moving && self.revolver.kick == 0 { ONE } else { 0 };
         self.gun_up = fx::approach(self.gun_up, want, ONE / 24);
@@ -699,9 +780,26 @@ impl World {
             .find(|p| p.kind == PropKind::Spare)
             .map(|p| p.at);
         let near_spare = !self.spare_taken && spare.map(|s| s.sub(origin).len_xz() < REACH).unwrap_or(false);
+        // T12: a curio in the hand comes first: E puts it down
+        if let Some(i) = self.held {
+            self.prompt = hold_prompt(self.mall.curios[i].kind);
+            if fresh_use {
+                self.put_down(i);
+            }
+            return;
+        }
+        let eye = self.eye();
+        let near_curio = (0..self.curios.len())
+            .filter(|&i| {
+                let c = self.curios[i].at;
+                c.sub(origin).len_xz() < REACH && self.off_view(c) < CURIO_LOOK
+            })
+            .min_by_key(|&i| self.curios[i].at.sub(eye).len());
         if self.mode == Mode::Look {
             if near_spare {
                 self.prompt = "prompt_take_box";
+            } else if let Some(i) = near_curio {
+                self.prompt = take_prompt(self.mall.curios[i].kind);
             } else if near_hide.is_some() {
                 self.prompt = "prompt_hide";
             }
@@ -714,6 +812,10 @@ impl World {
                 self.say("box_rattle", origin, ONE / 3, None);
                 return;
             }
+            if let Some(i) = near_curio {
+                self.pick_up(i);
+                return;
+            }
             if let Some(h) = near_hide {
                 self.seen_hide = self.spirit.chasing && self.spirit.unseen == 0;
                 self.mode = Mode::Hidden(h);
@@ -723,7 +825,6 @@ impl World {
                 return;
             }
         }
-        let eye = self.eye();
         let door = self.mall.doors.iter().enumerate().position(|(i, d)| {
             self.door_open[i] < ONE
                 && d.handle.sub(eye).len() < REACH
@@ -1278,6 +1379,307 @@ impl World {
             .map(|(i, _)| i)
     }
 
+    // T12: the curios -----------------------------------------------------
+
+    fn pick_up(&mut self, i: usize) {
+        self.held = Some(i);
+        let at = self.curios[i].at;
+        if self.mall.curios[i].kind != CurioKind::Phone {
+            self.say("pick_up", at, ONE / 5, None);
+            return;
+        }
+        // the ringing stops; on the line a hiss, a giggle at your ear, the
+        // click of someone hanging up, then another telephone behind you
+        self.cues.retain(|(_, c)| {
+            !matches!(
+                c,
+                Cue::Sound {
+                    recipe: "phone_ring",
+                    ..
+                }
+            )
+        });
+        self.say("receiver_up", at, ONE / 4, None);
+        if self.curios[i].spent {
+            return;
+        }
+        self.curios[i].spent = true;
+        let t = self.tick;
+        let sound = |recipe, place, loud, mark| Cue::Sound {
+            recipe,
+            place,
+            loud,
+            mark,
+        };
+        self.cues.push((
+            t + HZ / 2,
+            sound("line_hiss", Place::Head(EAR), ONE * 3 / 10, None),
+        ));
+        self.cues.push((
+            t + 2 * HZ,
+            sound("giggle", Place::Head(EAR), ONE * 4 / 10, Some("sub_giggle")),
+        ));
+        self.cues.push((
+            t + 4 * HZ,
+            sound("receiver_click", Place::Head(EAR), ONE * 3 / 10, None),
+        ));
+        self.cues.push((
+            t + 6 * HZ,
+            sound(
+                "phone_ring",
+                Place::Behind(int(12)),
+                ONE * 6 / 10,
+                Some("sub_ring"),
+            ),
+        ));
+    }
+
+    fn put_down(&mut self, i: usize) {
+        self.held = None;
+        let home = self.mall.curios[i];
+        if home.kind == CurioKind::Phone {
+            // on its cord: back on the counter
+            self.curios[i].at = home.at;
+            self.say("receiver_down", home.at, ONE / 4, None);
+            return;
+        }
+        let ahead = facing(self.yaw, 0).scale(ONE * 6 / 10);
+        let mut at = self.body.origin.add(ahead);
+        if !self.clear_line(self.eye(), at.add(v3(0, ONE / 10, 0))) {
+            at = self.body.origin;
+        }
+        at.y = self.body.origin.y;
+        self.curios[i].at = at;
+        self.curios[i].yaw = self.yaw;
+        self.say("put_down", at, ONE / 5, None);
+    }
+
+    /// The left button with a curio in the hand: each answers once.
+    fn use_curio(&mut self, i: usize) {
+        self.curios[i].uses += 1;
+        let uses = self.curios[i].uses;
+        let fresh = !self.curios[i].spent;
+        let t = self.tick;
+        match self.mall.curios[i].kind {
+            CurioKind::Toy => {
+                self.say_head("squeak", HAND, ONE * 4 / 10);
+                // only the one squeeze: she answers once
+                if uses == TOY_SQUEEZES {
+                    // she is there for under half a second, then a squeak
+                    // answers from behind you
+                    self.cues.push((
+                        t + HZ / 5,
+                        Cue::Girl {
+                            ahead: ONE * 22 / 10,
+                            side: 0,
+                            ticks: GIRL_TICKS,
+                            until_seen: false,
+                        },
+                    ));
+                    self.cues.push((
+                        t + 2 * HZ,
+                        Cue::Sound {
+                            recipe: "squeak",
+                            place: Place::Behind(int(6)),
+                            loud: ONE * 4 / 10,
+                            mark: Some("sub_squeak"),
+                        },
+                    ));
+                }
+            }
+            CurioKind::Camera => {
+                self.say_head("shutter_snap", HAND, ONE * 4 / 10);
+                self.flash = FLASH_TICKS;
+                if uses == CAMERA_FRAMES {
+                    // she stands in the flash, and only in the flash
+                    self.cues.push((
+                        t,
+                        Cue::Girl {
+                            ahead: ONE * 15 / 10,
+                            side: fx::deg(8),
+                            // the flash counts down this tick already
+                            ticks: FLASH_TICKS - 1,
+                            until_seen: false,
+                        },
+                    ));
+                }
+            }
+            CurioKind::MusicBox => {
+                self.say_head("wind_up", HAND, ONE * 3 / 10);
+                if fresh {
+                    // the tune runs down, phrase by phrase; when it stops
+                    // she giggles behind you and stands there until you
+                    // turn round, or for four seconds
+                    self.curios[i].spent = true;
+                    let mut due = t + HZ / 2;
+                    let mut gap = HZ * 3 / 4;
+                    for _ in 0..TUNE_PHRASES {
+                        self.cues.push((
+                            due,
+                            Cue::Sound {
+                                recipe: "music_box",
+                                place: Place::Curio(i),
+                                loud: ONE * 35 / 100,
+                                mark: Some("sub_music"),
+                            },
+                        ));
+                        due += gap;
+                        gap += HZ / 8;
+                    }
+                    self.cues.push((
+                        due + HZ,
+                        Cue::Girl {
+                            ahead: int(2),
+                            side: fx::TURN / 2,
+                            ticks: 4 * HZ as i32,
+                            until_seen: true,
+                        },
+                    ));
+                }
+            }
+            // the telephone answers when it is picked up
+            CurioKind::Phone => {}
+        }
+    }
+
+    /// Each tick: the telephone starts ringing, the girl fades, cues fall due.
+    fn curio_time(&mut self) {
+        self.flash = (self.flash - 1).max(0);
+        let origin = self.body.origin;
+        if !self.rang {
+            let phone = self.mall.curios.iter().position(|c| c.kind == CurioKind::Phone);
+            if let Some(i) = phone {
+                if self.mall.rooms[self.mall.curios[i].room].holds(origin) {
+                    self.rang = true;
+                    for k in 0..RINGS {
+                        self.cues.push((
+                            self.tick + HZ / 2 + k * 3 * HZ,
+                            Cue::Sound {
+                                recipe: "phone_ring",
+                                place: Place::Curio(i),
+                                loud: ONE * 6 / 10,
+                                mark: Some("sub_ring"),
+                            },
+                        ));
+                    }
+                }
+            }
+        }
+        if let Some(mut p) = self.phantom {
+            p.ticks -= 1;
+            let head = p.at.add(v3(0, GIRL_HEAD, 0));
+            if p.until_seen && self.off_view(head) < fx::deg(25) && self.sees(head) {
+                p.ticks = p.ticks.min(SEEN_LINGER);
+                p.until_seen = false;
+            }
+            self.phantom = if p.ticks > 0 { Some(p) } else { None };
+        }
+        let now = self.tick;
+        let due: Vec<Cue> = self
+            .cues
+            .iter()
+            .filter(|(t, _)| *t <= now)
+            .map(|(_, c)| *c)
+            .collect();
+        self.cues.retain(|(t, _)| *t > now);
+        for c in due {
+            self.cue(c);
+        }
+    }
+
+    fn cue(&mut self, c: Cue) {
+        match c {
+            Cue::Sound {
+                recipe,
+                place,
+                loud,
+                mark,
+            } => match place {
+                Place::At(p) => self.say(recipe, p, loud, mark),
+                Place::Head(off) => self.say_head_marked(recipe, off, loud, mark),
+                Place::Behind(d) => {
+                    let p = self
+                        .body
+                        .origin
+                        .sub(facing(self.yaw, 0).scale(d))
+                        .add(v3(0, ONE, 0));
+                    self.say(recipe, p, loud, mark);
+                }
+                Place::Curio(i) => {
+                    if self.held == Some(i) {
+                        self.say_head_marked(recipe, HAND, loud, mark);
+                    } else {
+                        let p = self.curios[i].at.add(v3(0, ONE / 10, 0));
+                        self.say(recipe, p, loud, mark);
+                    }
+                }
+            },
+            Cue::Girl {
+                ahead,
+                side,
+                ticks,
+                until_seen,
+            } => self.show_girl(ahead, side, ticks, until_seen),
+        }
+    }
+
+    /// The girl `ahead` along the view turned by `side`: where she would
+    /// stand inside a wall or a counter, nearer, then farther (behind the
+    /// counter), wherever she stands clear and in plain sight; where there
+    /// is no such place, only her giggle.
+    fn show_girl(&mut self, ahead: Fx, side: i32, ticks: i32, until_seen: bool) {
+        let dir = facing(self.yaw + side, 0);
+        let eye = self.eye();
+        let step = ONE / 5;
+        let nearer = (0..).map(|k| ahead - k * step).take_while(|d| *d >= GIRL_NEAREST);
+        let farther = (1..=GIRL_BEYOND / step).map(|k| ahead + k * step);
+        let spots: Vec<Fx> = nearer.chain(farther).collect();
+        for d in spots {
+            let at = self.body.origin.add(dir.scale(d));
+            if self.girl_fits(at) && self.clear_line(eye, at.add(v3(0, GIRL_HEAD, 0))) {
+                self.phantom = Some(Phantom {
+                    at,
+                    yaw: yaw_of(self.body.origin.sub(at)),
+                    ticks,
+                    until_seen,
+                });
+                self.say("giggle", at.add(v3(0, ONE, 0)), ONE * 4 / 10, Some("sub_giggle"));
+                return;
+            }
+        }
+        self.say_head_marked("giggle", v3(0, 0, ONE / 3), ONE * 4 / 10, Some("sub_giggle"));
+    }
+
+    /// Whether the girl, standing at `at`, is clear of every wall, counter
+    /// and door.
+    pub fn girl_fits(&self, at: V3) -> bool {
+        let mut sc = Scratch::default();
+        let half = v3(ONE / 5, ONE / 2, ONE / 5);
+        let mid = at.add(v3(0, ONE * 6 / 10, 0));
+        let t = trace_box(
+            &self.mall.map,
+            &mut sc,
+            mid,
+            mid.add(v3(0, ONE / 50, 0)),
+            half.neg(),
+            half,
+        );
+        !t.start_solid && !t.hit()
+    }
+
+    /// A sound in the head that may also go on the ring: its bearing is
+    /// the view's heading turned by where it sits in the head.
+    fn say_head_marked(&mut self, recipe: &'static str, off: V3, loud: Fx, mark: Option<&'static str>) {
+        self.say_head(recipe, off, loud);
+        if let Some(key) = mark {
+            self.marks.push(Mark {
+                key,
+                angle: self.yaw + yaw_of(off),
+                tick: self.tick,
+            });
+        }
+    }
+
     fn steps_due(&mut self) {
         let now = self.tick;
         let due: Vec<V3> = self
@@ -1771,6 +2173,57 @@ pub const GLIMPSE_FAR: i32 = fx::deg(48);
 
 /// How far a sign turns toward you each tick of the chase: 30° a second.
 pub const SIGN_TURN: i32 = fx::deg(1) / 2;
+
+/// T12, the curios: one is picked up within `REACH` and this far off the
+/// view (a toy on the floor needs a look down).
+pub const CURIO_LOOK: i32 = fx::deg(50);
+/// the squeeze of the toy that brings the girl
+pub const TOY_SQUEEZES: i32 = 2;
+/// the picture that has her in it
+pub const CAMERA_FRAMES: i32 = 2;
+/// how long the camera's flash lights the store, and her in it
+pub const FLASH_TICKS: i32 = 10;
+/// how long she stands in front of the toy, 0.4 s
+pub const GIRL_TICKS: i32 = 24;
+/// how long she stays once looked at
+pub const SEEN_LINGER: i32 = 8;
+/// the nearest she comes, and her head's height
+pub const GIRL_NEAREST: Fx = ONE * 8 / 10;
+pub const GIRL_HEAD: Fx = ONE * 95 / 100;
+/// how much farther than meant she may stand, behind a counter
+pub const GIRL_BEYOND: Fx = 2 * ONE;
+/// how many phrases the music box plays, how often the telephone rings
+pub const TUNE_PHRASES: i32 = 8;
+pub const RINGS: i64 = 6;
+/// in the head: the right hand, and the right ear for the receiver
+pub const HAND: V3 = V3 {
+    x: ONE / 5,
+    y: -ONE / 4,
+    z: -ONE * 4 / 10,
+};
+pub const EAR: V3 = V3 {
+    x: ONE * 12 / 100,
+    y: 0,
+    z: 0,
+};
+
+fn take_prompt(k: CurioKind) -> &'static str {
+    match k {
+        CurioKind::Toy => "prompt_take_toy",
+        CurioKind::Camera => "prompt_take_camera",
+        CurioKind::MusicBox => "prompt_take_music_box",
+        CurioKind::Phone => "prompt_take_phone",
+    }
+}
+
+fn hold_prompt(k: CurioKind) -> &'static str {
+    match k {
+        CurioKind::Toy => "prompt_hold_toy",
+        CurioKind::Camera => "prompt_hold_camera",
+        CurioKind::MusicBox => "prompt_hold_music_box",
+        CurioKind::Phone => "prompt_hold_phone",
+    }
+}
 
 /// The heading a sign at `at` needs for its face to look at `p`.
 pub fn sign_yaw_to(at: V3, p: V3) -> i32 {

@@ -152,5 +152,96 @@
     "find": "                    if self.door_open[d] == 0 {\n                        continue;\n                    }",
     "replace": "",
     "test": "a_cultist_cannot_pass_a_shut_door"
+  },
+  {
+    "name": "the toy brings her on the second squeeze (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "pub const TOY_SQUEEZES: i32 = 2;",
+    "replace": "pub const TOY_SQUEEZES: i32 = 1;",
+    "test": "the_toy_brings_the_little_girl_on_the_second_squeeze_for_four_tenths_of_a_second"
+  },
+  {
+    "name": "each curio answers once (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "                    self.curios[i].spent = true;\n                    let mut due = t + HZ / 2;",
+    "replace": "                    let mut due = t + HZ / 2;",
+    "test": "unseen_she_stays_behind_you_four_seconds"
+  },
+  {
+    "name": "with a curio in hand the left button does not fire (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "            if let Some(i) = self.held {\n                self.use_curio(i);\n            } else {\n                self.fire();\n            }",
+    "replace": "            if let Some(i) = self.held {\n                self.use_curio(i);\n            }\n            self.fire();",
+    "test": "with_a_curio_in_hand_the_left_button_uses_it_and_e_puts_it_down"
+  },
+  {
+    "name": "E puts a curio down (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "            if fresh_use {\n                self.put_down(i);\n            }",
+    "replace": "",
+    "test": "with_a_curio_in_hand_the_left_button_uses_it_and_e_puts_it_down"
+  },
+  {
+    "name": "she stands in the camera's flash only (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "                            ticks: FLASH_TICKS - 1,",
+    "replace": "                            ticks: GIRL_TICKS,",
+    "test": "the_camera_shows_her_in_the_second_flash_and_only_while_it_lasts"
+  },
+  {
+    "name": "reduced flashes dim the camera (T12)",
+    "file": "crates/core/src/view.rs",
+    "find": "let k = if w.settings.reduce_flashes { ONE } else { ONE * 3 };",
+    "replace": "let k = ONE * 3;",
+    "test": "with_flashes_reduced_the_camera_flash_is_a_third_as_bright"
+  },
+  {
+    "name": "the music box runs down before she comes (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "                        gap += HZ / 8;",
+    "replace": "",
+    "test": "the_music_box_runs_down_then_she_stands_behind_you_until_you_turn"
+  },
+  {
+    "name": "once seen she goes (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "                p.ticks = p.ticks.min(SEEN_LINGER);",
+    "replace": "",
+    "test": "the_music_box_runs_down_then_she_stands_behind_you_until_you_turn"
+  },
+  {
+    "name": "unseen she stays four seconds (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "                            ticks: 4 * HZ as i32,",
+    "replace": "                            ticks: 2 * HZ as i32,",
+    "test": "unseen_she_stays_behind_you_four_seconds"
+  },
+  {
+    "name": "answering the telephone stops its ringing (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "        self.cues\n            .retain(|(_, c)| !matches!(c, Cue::Sound { recipe: \"phone_ring\", .. }));",
+    "replace": "",
+    "test": "the_telephone_rings_when_you_walk_in_and_answering_it_stops_it"
+  },
+  {
+    "name": "the girl is kept out of walls and counters (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "            if self.girl_fits(at) && self.clear_line(",
+    "replace": "            if self.clear_line(",
+    "test": "the_girl_never_stands_in_a_wall_a_counter_or_a_door"
+  },
+  {
+    "name": "the curios' sounds and lines are in data (T12)",
+    "file": "data/sounds.json",
+    "find": "  \"giggle\": {",
+    "replace": "  \"giggle_gone\": {",
+    "test": "every_sound_and_line_the_curios_use_is_in_data"
+  },
+  {
+    "name": "the telephone answers once (T12)",
+    "file": "crates/core/src/world.rs",
+    "find": "        if self.curios[i].spent {\n            return;\n        }\n        self.curios[i].spent = true;",
+    "replace": "",
+    "test": "the_telephone_rings_when_you_walk_in_and_answering_it_stops_it"
   }
 ]

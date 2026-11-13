@@ -13,7 +13,7 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R1.3 | finding | The grant names the repository "Chum Scare" | A GitHub repository name cannot hold a space | Default `chum-scare` (page sgilson7.github.io/chum-scare), the game's title stays "Chum Scare"; asked as CH-Q7 | | open |
 | R1.4 | finding | Embark has published how ARC Raiders places sound in 3D | Its public posts describe recording and rules (mics at distance, state patterns, knee distance, backpack fill, Night Mode), not its spatializer, occlusion or middleware | Tab 3 keeps what Embark published apart from what I infer, and each inference is marked | | done |
 | R1.5 | divergence | The description says "pop out the barrel" | On a revolver the part that swings out holding the six chambers is the cylinder; the barrel is the tube in front | The journal and the glossary will say cylinder, with barrel kept for the tube | `GLOSSARY.md` (at the build) | done |
-| R1.6 | worklist | The agent makes the enemy models | The description puts the Blender models in `~/Documents/BuilderRefinedArtstyle`, outside this project | The first version uses primitive stand-ins in Chumontillado's manner; the spirit, cultist, mannequin and car models are the person's to make there, exported as glTF with the sizes tab 2 lists (CH-Q13) | | person |
+| R1.6 | worklist | The agent makes the enemy models | The description puts the Blender models in `~/Documents/BuilderRefinedArtstyle`, outside this project | The first version uses primitive stand-ins in Chumontillado's manner; the spirit, cultist, mannequin, car, little girl (T12) and curio models are the person's to make there, exported as glTF with the sizes tab 2 lists (CH-Q13) | | person |
 | R1.7 | finding | Settings such as Mono can be kept between visits | D17: the page keeps nothing in browser storage unless the brief allows `kits/saves/` | A player deaf in one ear would turn Mono on at every visit; asked as CH-Q6 | | open |
 | R1.8 | divergence | The journal keeps the template's colours | It is restyled dark and dusty to match the game; its structure, entries and chips are the template's | none to the form `journal_check.py` reads | | done |
 | R1.9 | finding | A "digital cleansing ritual" could touch the computer | Its steps are ordinary care done at the person's own hand (restart, update, clean the keyboard, clear this site's cache); the game itself does none of them | Rule CH-9: fourth-wall content stays inside the tab | CH-9, journal tab 5 | open |
@@ -47,6 +47,13 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R6.3 | finding | Journal page 8: the screen's edge is 58° (`HALF_VIEW`) | `HALF_VIEW` is a design margin, not the screen: at 16:9 the edge is 51°, so the old glimpses at 55° were just off the screen | `tools/census.py` bands now use 51°; the earlier census entry is corrected in the next entry, not edited | `tools/census.py` | done |
 | R7.1 | divergence | T6: "the door" is the cursed store's door | Your T9 words ("on the way into the main hall") say it was the court's entrance; T6 had moved the ring toward it (12.8 m) | The ring centred in the court's south half, about 14 m from both doors | `mall::RING`; `every_cult_post_stands_well_off_both_court_doors` | done |
 | R7.2 | worklist | T10: what stopped progress after the cult was dead | No prompt said how to turn a handle or use the board; I guessed that was it | Prompts added; tell me if something else stopped you | `data/strings.json` prompt_turn_handle, prompt_turning, prompt_use_board | person |
+| R8.1 | divergence | T11: the sign "Behind you!" is the brief's own words (R3.1) | Its "!" is what read as hokey | Kept the words, dropped the "!", and wrote it as a scrawl on the wall; the "!" allowance in `copy.rs` is gone | `data/strings.json` sign_behind; `data/display.json` sign_styles | done |
+| R8.2 | worklist | T11: the signs are a list the player reads (CH-12, R1.11) | I wrote both passes | The second pass is in the game; both passes are in the journal entry and at the foot of this file. Yours to approve or rewrite | `data/strings.json` sign_* | person |
+| R8.3 | divergence | T12: "a few things", one of them the toy | You named only the toy | I chose three more: the camera, the music box and the telephone, one store each (Tots & Tumble, the photo store, the jeweller's, Video Vault); cut any you do not want | `mall::CurioKind`; `mall()` curios | done |
+| R8.4 | divergence | T12: you grab a curio and use it | Using needs a button, and the left button fires | While you hold a curio the left button uses it, the revolver stays in its holster, and the right button does nothing; E puts it down at your feet (the receiver back on its cradle) | `World::modes`, `World::tick`; `with_a_curio_in_hand_…` | done |
+| R8.5 | finding | T12: she stands where the view points | In front of the camera's counter there is no room for her: she was inside the counter at every distance | She may also stand up to 2 m farther, behind the counter; where no spot is clear and in sight, only her giggle | `World::show_girl`, `GIRL_BEYOND`; `the_girl_never_stands_in_a_wall_…` | done |
+| R8.6 | finding | T12: a flag keeps each curio from answering twice | For the toy and the camera the flag changed nothing: the squeeze and picture counts already allow one answer, and the break test missed it | The flag is kept only for the music box and the telephone | `CurioState::spent`; `tests/breaks.json` | done |
+| R8.7 | divergence | Figures come from Blender (R1.6) | The little girl and the four curios are stand-in boxes like the others | They join the Blender list | `view::girl`, `view::curio` | done |
 
 ## Strings written by the agent
 
@@ -58,3 +65,20 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `prompt_turn_handle` | Hold the right button and draw circles to turn the handle |
 | `prompt_turning` | Keep drawing circles. Let go of the button to stop. |
 | `prompt_use_board` | Hold the right button to put your hand on the planchette |
+| `sign_behind` | behind you |
+| `sign_open_late` | Open |
+| `sign_try_them` | Found: one child's shoe, left foot |
+| `sign_lost_child` | If you find a little girl, do not bring her to the desk |
+| `sign_dont_play` | Your prints are ready. There are more than you took. |
+| `prompt_take_toy` | E: pick up the toy |
+| `prompt_take_camera` | E: pick up the camera |
+| `prompt_take_music_box` | E: pick up the music box |
+| `prompt_take_phone` | E: answer the telephone |
+| `prompt_hold_toy` | Left button: squeeze it. E: put it down |
+| `prompt_hold_camera` | Left button: take a picture. E: put it down |
+| `prompt_hold_music_box` | Left button: wind it. E: put it down |
+| `prompt_hold_phone` | E: hang up |
+| `sub_giggle` | A little girl giggles |
+| `sub_squeak` | A toy squeaks |
+| `sub_ring` | A telephone rings |
+| `sub_music` | A music box plays |

@@ -209,7 +209,7 @@ async function main() {
         const d = document.createElement("div");
         const t = document.createElement("span");
         t.textContent = say(s.key).split("{clock}").join(ui.clock);
-        d.className = s.key === "sign_open_late" ? "neon" : "";
+        d.className = display.sign_styles[s.key] || "";
         d.style.transform = "matrix3d(" + s.m.map((v) => v / N.one).join(",") + ")";
         d.append(t);
         return d;

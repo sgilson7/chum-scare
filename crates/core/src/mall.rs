@@ -163,6 +163,29 @@ pub struct ScarePoint {
     pub menace: i32,
 }
 
+/// A small thing left in a store that the player can pick up (T12); each
+/// answers once (`world::curios`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CurioKind {
+    /// a rubber rabbit on the toy store's floor: squeeze it
+    Toy,
+    /// a disposable camera in the photo store: take a picture
+    Camera,
+    /// a music box on the jeweller's counter: wind it
+    MusicBox,
+    /// the video store's telephone: it rings once you are inside
+    Phone,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Curio {
+    pub kind: CurioKind,
+    pub at: V3,
+    pub yaw: i32,
+    /// the room it is in
+    pub room: usize,
+}
+
 /// A sign or line the page lays over the view where it stands (tab 5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Sign {
@@ -184,6 +207,7 @@ pub struct Mall {
     pub hides: Vec<V3>,
     pub scares: Vec<ScarePoint>,
     pub signs: Vec<Sign>,
+    pub curios: Vec<Curio>,
     pub cultist_posts: Vec<V3>,
     pub spawn: V3,
     pub spawn_yaw: i32,
@@ -458,7 +482,16 @@ pub fn mall() -> Mall {
     );
     b.solid(v3(i(72), 0, -d(15)), v3(i(78), d(3), d(15)), [60, 30, 28], CARPET);
     // counters in the stores
-    for (x, z) in [(6, 12), (20, 12), (34, 12), (48, 12), (20, -12), (34, -12)] {
+    // T12: the photo store's counter (48, -12) holds the camera
+    for (x, z) in [
+        (6, 12),
+        (20, 12),
+        (34, 12),
+        (48, 12),
+        (20, -12),
+        (34, -12),
+        (48, -12),
+    ] {
         b.solid(
             v3(i(x), 0, i(z)),
             v3(i(x) + i(4), d(10), i(z) + ONE),
@@ -734,6 +767,21 @@ pub fn mall() -> Mall {
         sign("sign_exit", -75, 30, 0, -90),
     ];
 
+    // T12: where each curio is left: the toy on the floor, the rest on a
+    // counter's top (1 m)
+    let cu = |kind: CurioKind, x: i32, y: i32, z: i32, face: i32, room: usize| Curio {
+        kind,
+        at: v3(d(x), d(y), d(z)),
+        yaw: crate::fx::deg(face),
+        room,
+    };
+    let curios = vec![
+        cu(CurioKind::Toy, 262, 0, -88, 30, 7),
+        cu(CurioKind::Camera, 492, 10, -115, 160, 9),
+        cu(CurioKind::MusicBox, 362, 10, -115, 0, 8),
+        cu(CurioKind::Phone, 372, 10, 125, 180, 5),
+    ];
+
     Mall {
         map: Map {
             brushes: b.map.brushes,
@@ -749,6 +797,7 @@ pub fn mall() -> Mall {
         hides,
         scares,
         signs,
+        curios,
         cultist_posts,
         spawn: v3(i(-5), 0, 0),
         spawn_yaw: crate::fx::deg(-90),

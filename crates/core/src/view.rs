@@ -9,7 +9,7 @@ use serde::Serialize;
 use crate::fx::{self, int, Fx, ONE};
 use crate::geom::{facing, v3, Affine, Mat4, V3};
 use crate::lights::State;
-use crate::mall::{self, FixtureKind, PropKind, Slab};
+use crate::mall::{self, CurioKind, FixtureKind, PropKind, Slab};
 use crate::world::{
     chamber_at, Chamber, Mind, Mode, Output, Phase, World, BOX_AT, CYLINDER, LETTERS, POCKET,
 };
@@ -315,6 +315,226 @@ fn car(out: &mut Vec<i32>, f: &Affine, possessed: bool) {
     );
 }
 
+/// A curio, its base on the frame's origin (T12). Stand-in boxes until the
+/// Blender models come (R1.6).
+fn curio(out: &mut Vec<i32>, f: &Affine, kind: CurioKind) {
+    match kind {
+        CurioKind::Toy => {
+            // a grubby rubber rabbit, sat up
+            let rubber = [176, 140, 138];
+            part(
+                out,
+                f,
+                v3(cm(-4), 0, cm(-3)),
+                v3(cm(4), cm(9), cm(3)),
+                rubber,
+                mall::PLASTIC,
+                0,
+            );
+            part(
+                out,
+                f,
+                v3(cm(-3), cm(9), cm(-3)),
+                v3(cm(3), cm(15), cm(3)),
+                rubber,
+                mall::PLASTIC,
+                0,
+            );
+            for x in [-2, 1] {
+                part(
+                    out,
+                    f,
+                    v3(cm(x), cm(15), cm(-1)),
+                    v3(cm(x + 1), cm(21), cm(0)),
+                    rubber,
+                    mall::PLASTIC,
+                    0,
+                );
+            }
+            for x in [-2, 1] {
+                part(
+                    out,
+                    f,
+                    v3(cm(x), cm(12), cm(-3) - cm(1) / 2),
+                    v3(cm(x + 1), cm(13), cm(-3)),
+                    [20, 14, 14],
+                    mall::GLASS,
+                    0,
+                );
+            }
+        }
+        CurioKind::Camera => {
+            part(
+                out,
+                f,
+                v3(cm(-6), 0, cm(-2)),
+                v3(cm(6), cm(6), cm(2)),
+                [196, 160, 52],
+                mall::PLASTIC,
+                0,
+            );
+            part(
+                out,
+                f,
+                v3(cm(-2), cm(1), cm(-3)),
+                v3(cm(2), cm(5), cm(-2)),
+                [24, 26, 30],
+                mall::GLASS,
+                0,
+            );
+            part(
+                out,
+                f,
+                v3(cm(2), cm(4), cm(-3)),
+                v3(cm(5), cm(6), cm(-2)),
+                [230, 230, 220],
+                mall::GLOW,
+                0,
+            );
+        }
+        CurioKind::MusicBox => {
+            part(
+                out,
+                f,
+                v3(cm(-7), 0, cm(-5)),
+                v3(cm(7), cm(7), cm(5)),
+                [84, 46, 36],
+                mall::WOOD,
+                0,
+            );
+            part(
+                out,
+                f,
+                v3(cm(-7), cm(7), cm(-5)),
+                v3(cm(7), cm(8), cm(5)),
+                [110, 66, 50],
+                mall::WOOD,
+                0,
+            );
+            // the dancer on the lid and the key in its side
+            part(
+                out,
+                f,
+                v3(cm(-1), cm(8), cm(-1)),
+                v3(cm(1), cm(13), cm(1)),
+                [222, 214, 206],
+                mall::PLASTIC,
+                0,
+            );
+            part(
+                out,
+                f,
+                v3(cm(7), cm(3), cm(-1)),
+                v3(cm(9), cm(5), cm(1)),
+                [180, 150, 70],
+                mall::METAL,
+                0,
+            );
+        }
+        CurioKind::Phone => {
+            // the receiver
+            part(
+                out,
+                f,
+                v3(cm(-9), cm(5), cm(-2)),
+                v3(cm(9), cm(8), cm(2)),
+                [206, 196, 170],
+                mall::PLASTIC,
+                0,
+            );
+        }
+    }
+}
+
+/// The telephone's base, which stays on the counter.
+fn phone_base(out: &mut Vec<i32>, f: &Affine) {
+    part(
+        out,
+        f,
+        v3(cm(-8), 0, cm(-6)),
+        v3(cm(8), cm(5), cm(6)),
+        [206, 196, 170],
+        mall::PLASTIC,
+        0,
+    );
+}
+
+/// The little girl: thin, in a grey dress, her hair over her face.
+fn girl(out: &mut Vec<i32>, p: V3, yaw: i32) {
+    let f = at_yaw(p, yaw);
+    let skin = [170, 168, 160];
+    let dress = [118, 116, 110];
+    let hair = [18, 14, 12];
+    for x in [-7, 3] {
+        part(
+            out,
+            &f,
+            v3(cm(x), 0, cm(-2)),
+            v3(cm(x + 4), cm(42), cm(2)),
+            skin,
+            mall::PLASTIC,
+            0,
+        );
+    }
+    part(
+        out,
+        &f,
+        v3(cm(-14), cm(40), cm(-8)),
+        v3(cm(14), cm(84), cm(8)),
+        dress,
+        mall::FABRIC,
+        0,
+    );
+    for x in [-18, 14] {
+        part(
+            out,
+            &f,
+            v3(cm(x), cm(46), cm(-2)),
+            v3(cm(x + 4), cm(82), cm(2)),
+            skin,
+            mall::PLASTIC,
+            0,
+        );
+    }
+    part(
+        out,
+        &f,
+        v3(cm(-8), cm(84), cm(-8)),
+        v3(cm(8), cm(102), cm(8)),
+        skin,
+        mall::PLASTIC,
+        0,
+    );
+    // the hair: over the crown and the back, and down over the face
+    part(
+        out,
+        &f,
+        v3(cm(-9), cm(96), cm(-9)),
+        v3(cm(9), cm(105), cm(9)),
+        hair,
+        mall::FABRIC,
+        0,
+    );
+    part(
+        out,
+        &f,
+        v3(cm(-9), cm(70), cm(-1)),
+        v3(cm(9), cm(98), cm(9)),
+        hair,
+        mall::FABRIC,
+        0,
+    );
+    part(
+        out,
+        &f,
+        v3(cm(-8), cm(74), cm(-9)),
+        v3(cm(8), cm(98), cm(-8)),
+        hair,
+        mall::FABRIC,
+        0,
+    );
+}
+
 /// What moves or changes: doors, props, cultists, the spirit, debris.
 pub fn dynamic_boxes(w: &World) -> Vec<i32> {
     let mut out = Vec::new();
@@ -563,6 +783,19 @@ pub fn dynamic_boxes(w: &World) -> Vec<i32> {
         let toward = w.body.origin.sub(w.spirit.at);
         spirit(&mut out, w.spirit.at, crate::geom::yaw_of(toward), w.spirit.size);
     }
+    // T12: the curios where they lie, and the girl while she is there
+    for (i, c) in w.curios.iter().enumerate() {
+        let home = w.mall.curios[i];
+        if home.kind == CurioKind::Phone {
+            phone_base(&mut out, &at_yaw(home.at, home.yaw));
+        }
+        if w.held != Some(i) {
+            curio(&mut out, &at_yaw(c.at, c.yaw), home.kind);
+        }
+    }
+    if let Some(p) = w.phantom {
+        girl(&mut out, p.at, p.yaw);
+    }
     for d in &w.debris {
         let f = at_yaw(d.at, d.yaw);
         part(
@@ -664,7 +897,27 @@ pub fn held_boxes(w: &World, cam: &Camera) -> Vec<i32> {
     } else {
         fidget
     };
-    if !matches!(w.mode, Mode::Door(_) | Mode::Ouija) {
+    if let Some(i) = w.held {
+        // T12: the curio in the right hand; the revolver is in its holster
+        let kind = w.mall.curios[i].kind;
+        let at = if kind == CurioKind::Phone {
+            v3(cm(9), cm(-4), -cm(6))
+        } else {
+            v3(cm(14) + sway, cm(-16) + bob_y + breath, -cm(36))
+        };
+        // the toy and the music box turned to face you, the camera's lens
+        // away, the receiver along the cheek
+        let turn = match kind {
+            CurioKind::Toy | CurioKind::MusicBox => fx::TURN / 2,
+            CurioKind::Camera => 0,
+            CurioKind::Phone => fx::QUARTER_TURN,
+        };
+        let c = frame
+            .then(&Affine::translate(at))
+            .then(&Affine::rot_y(turn))
+            .then(&Affine::translate(v3(0, -cm(5), 0)));
+        curio(&mut out, &c, kind);
+    } else if !matches!(w.mode, Mode::Door(_) | Mode::Ouija) {
         let g = frame
             .then(&Affine::translate(gun_at))
             .then(&Affine::rot_z(roll))
@@ -924,6 +1177,24 @@ pub fn lights(w: &World, eye: V3) -> Vec<Lit> {
                 rgb: v3(ONE / 4, ONE / 7, ONE / 20),
             });
         }
+    }
+    // T12: the camera's flash, from the hand along the view, gentler with
+    // flashes reduced; and the girl's own cold light, so she shows in the dark
+    if w.flash > 0 {
+        let k = if w.settings.reduce_flashes { ONE } else { ONE * 3 };
+        let ahead = facing(w.yaw, w.pitch).scale(cm(30));
+        all.push(Lit {
+            at: eye.add(ahead),
+            range: int(10),
+            rgb: v3(k, k, k * 95 / 100),
+        });
+    }
+    if let Some(p) = w.phantom {
+        all.push(Lit {
+            at: p.at.add(v3(0, cm(110), 0)).add(eye.sub(p.at).scale(ONE / 8)),
+            range: cm(250),
+            rgb: v3(ONE * 30 / 100, ONE * 34 / 100, ONE * 42 / 100),
+        });
     }
     all.sort_by_key(|l| l.at.sub(eye).len() - l.range / 2);
     let keep = [4, 8, 12][w.settings.tier.clamp(0, 2) as usize];

@@ -2,6 +2,13 @@
   "_note": "Presentation numbers the page needs (D3). Shader constants reach the shaders as uniforms; materials are spec power, grime, dust and pattern scale, in mall.rs's material order.",
   "software": ["SwiftShader", "llvmpipe", "Software", "Microsoft Basic Render"],
   "minutes_per_hour": 60,
+  "sign_styles": {
+    "sign_open_late": "neon",
+    "sign_behind": "scrawl",
+    "sign_try_them": "notice",
+    "sign_lost_child": "notice",
+    "sign_dont_play": "notice"
+  },
   "bless_hold_ms": 1600,
   "sensitivity_step": 20,
   "seed_range": 4294967295,

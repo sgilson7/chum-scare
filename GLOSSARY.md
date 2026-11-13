@@ -28,6 +28,12 @@ One of the six holes in the cylinder; each is empty, holds a round, or holds a s
 
 One of the robed figures chanting in the centre court. They see, hear, search and attack, and a shot drops one.
 
+### Curio
+
+A small thing left in a store that you can pick up with E and put down again: the toy, the camera, the music box and the telephone's receiver. Each answers once.
+
+Not: item, collectible
+
 ### Cylinder
 
 The part of the revolver that swings out to load and holds the six chambers.
@@ -49,6 +55,12 @@ Not: knob, lever
 ### Hiding place
 
 A booth or locker you can step into with E; the spirit passes you there unless it saw you go in.
+
+### Little girl
+
+The pale child a curio shows you. She is there for a moment and gone before you can reach her; she is not the spirit.
+
+Not: ghost
 
 ### Planchette
 

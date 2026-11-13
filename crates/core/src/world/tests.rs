@@ -829,3 +829,321 @@ fn a_lit_player_in_plain_view_at_fifteen_metres_is_noticed_then_hunted() {
     assert!((l - 41).abs() <= 2, "looked on tick {l}");
     assert!((h - 136).abs() <= 3, "hunted on tick {h}");
 }
+
+// T12: the curios -------------------------------------------------------
+
+/// The player `back` north of the curio of `kind` (+z), looking south at it.
+fn before_curio(kind: mall::CurioKind, back: Fx, pitch: i32) -> (World, usize) {
+    let mut w = playing();
+    let i = w.mall.curios.iter().position(|c| c.kind == kind).unwrap();
+    let at = w.mall.curios[i].at;
+    w.body = Body::at(v3(at.x, 0, at.z + back));
+    w.yaw = 0;
+    w.pitch = pitch;
+    (w, i)
+}
+
+fn fire_button() -> Input {
+    Input {
+        buttons: FIRE,
+        ..Input::default()
+    }
+}
+
+/// One tick with `input`, then `then` idle ticks; every sound and line
+/// key heard on the way goes into `heard`.
+fn drive(w: &mut World, input: Input, then: usize, heard: &mut Vec<&'static str>) {
+    w.tick(&input);
+    for k in 0..=then {
+        if k > 0 {
+            w.tick(&Input::default());
+        }
+        heard.extend(w.voices.iter().map(|v| v.recipe));
+        heard.extend(w.marks.iter().map(|m| m.key));
+        if !w.prompt.is_empty() {
+            heard.push(w.prompt);
+        }
+    }
+}
+
+/// The ticks, counted from 1 after the one that set it going, on which
+/// the girl was there.
+fn girl_ticks(w: &mut World, input: Input, ticks: i32) -> Vec<i32> {
+    w.tick(&input);
+    let mut on = Vec::new();
+    for k in 1..=ticks {
+        w.tick(&Input::default());
+        if w.phantom.is_some() {
+            on.push(k);
+        }
+    }
+    on
+}
+
+#[test]
+fn the_toy_brings_the_little_girl_on_the_second_squeeze_for_four_tenths_of_a_second() {
+    let (mut w, i) = before_curio(mall::CurioKind::Toy, ONE * 12 / 10, -fx::deg(40));
+    let mut heard = Vec::new();
+    drive(&mut w, keys(USE), 1, &mut heard);
+    assert_eq!(w.held, Some(i));
+    assert_eq!(w.prompt, "prompt_hold_toy");
+    // the first squeeze: nothing
+    assert!(girl_ticks(&mut w, fire_button(), 180).is_empty());
+    // the second: 0.2 s later (12 ticks) for 24 ticks, 2.2 m straight ahead
+    w.tick(&fire_button());
+    let mut on = Vec::new();
+    for k in 1..=60 {
+        w.tick(&Input::default());
+        if let Some(p) = w.phantom {
+            if on.is_empty() {
+                // the toy was at z −8.8 m, the player 1.2 m north: −7.6 − 2.2
+                assert!(
+                    near(p.at.z, -ONE * 98 / 10, ONE / 50),
+                    "{}",
+                    fx::decimal(p.at.z, 2)
+                );
+                assert!(near(p.at.x, ONE * 262 / 10, ONE / 50));
+                assert!(w.off_view(p.at.add(v3(0, GIRL_HEAD, 0))) < fx::deg(35));
+            }
+            on.push(k);
+        }
+    }
+    assert_eq!(on, (12..=35).collect::<Vec<_>>());
+    // she answers once
+    assert!(girl_ticks(&mut w, fire_button(), 180).is_empty());
+    assert!(girl_ticks(&mut w, fire_button(), 180).is_empty());
+}
+
+#[test]
+fn with_a_curio_in_hand_the_left_button_uses_it_and_e_puts_it_down() {
+    let (mut w, i) = before_curio(mall::CurioKind::Toy, ONE * 12 / 10, -fx::deg(40));
+    w.revolver.chambers = [Chamber::Round; 6];
+    w.tick(&keys(USE));
+    w.tick(&Input::default());
+    w.tick(&fire_button());
+    assert!(w.voices.iter().any(|v| v.recipe == "squeak"));
+    assert!(!w.voices.iter().any(|v| v.recipe == "shot"));
+    assert_eq!(w.revolver.chambers, [Chamber::Round; 6]);
+    w.tick(&Input::default());
+    w.tick(&keys(USE));
+    assert_eq!(w.held, None);
+    // 0.6 m ahead of the player at z −7.6, on the floor
+    let at = w.curios[i].at;
+    assert!(near(at.z, -ONE * 82 / 10, ONE / 50), "{}", fx::decimal(at.z, 2));
+    assert!(near(at.y, 0, ONE / 100));
+    w.tick(&Input::default());
+    w.tick(&fire_button());
+    assert!(w
+        .voices
+        .iter()
+        .any(|v| v.recipe == "dry_click" || v.recipe == "shot"));
+}
+
+#[test]
+fn the_camera_shows_her_in_the_second_flash_and_only_while_it_lasts() {
+    let (mut w, _) = before_curio(mall::CurioKind::Camera, ONE * 12 / 10, 0);
+    w.tick(&keys(USE));
+    w.tick(&Input::default());
+    assert!(girl_ticks(&mut w, fire_button(), 60).is_empty());
+    w.tick(&fire_button());
+    let first = w.phantom.expect("she is in the second picture");
+    assert!(w.off_view(first.at.add(v3(0, GIRL_HEAD, 0))) < fx::deg(35));
+    // the flash is the brightest light there is, at the hand
+    let flash = crate::view::lights(&w, w.eye())
+        .into_iter()
+        .map(|l| l.rgb.x)
+        .max()
+        .unwrap();
+    assert_eq!(flash, ONE * 3);
+    let mut lit = 1;
+    for _ in 0..30 {
+        w.tick(&Input::default());
+        assert_eq!(w.phantom.is_some(), w.flash > 0, "tick {lit}");
+        if w.flash > 0 {
+            lit += 1;
+        }
+    }
+    // FLASH_TICKS is 10; this tick's count-down leaves nine lit ticks
+    assert_eq!(lit, 9);
+    assert!(girl_ticks(&mut w, fire_button(), 60).is_empty());
+}
+
+#[test]
+fn with_flashes_reduced_the_camera_flash_is_a_third_as_bright() {
+    let (mut w, _) = before_curio(mall::CurioKind::Camera, ONE * 12 / 10, 0);
+    w.act("flashes", "reduce").unwrap();
+    w.tick(&keys(USE));
+    w.tick(&Input::default());
+    w.tick(&fire_button());
+    let flash = crate::view::lights(&w, w.eye())
+        .into_iter()
+        .map(|l| l.rgb.x)
+        .max()
+        .unwrap();
+    assert_eq!(flash, ONE);
+}
+
+#[test]
+fn the_music_box_runs_down_then_she_stands_behind_you_until_you_turn() {
+    let (mut w, _) = before_curio(mall::CurioKind::MusicBox, ONE * 12 / 10, 0);
+    let mut heard = Vec::new();
+    drive(&mut w, keys(USE), 1, &mut heard);
+    drive(&mut w, fire_button(), 0, &mut heard);
+    // phrases at +30, then gaps of 45, 52 … 94 ticks: the eighth at +492,
+    // she at 492 + 94 + 60 = +646
+    let mut tunes = Vec::new();
+    let mut came = None;
+    for k in 1..=700 {
+        w.tick(&Input::default());
+        if w.voices.iter().any(|v| v.recipe == "music_box") {
+            tunes.push(k);
+        }
+        if came.is_none() && w.phantom.is_some() {
+            came = Some(k);
+        }
+    }
+    assert_eq!(tunes, vec![30, 75, 127, 186, 252, 325, 405, 492]);
+    assert_eq!(came, Some(646));
+    let p = w.phantom.unwrap();
+    // her head, 2 m behind and 0.65 m below the eye: 162° off the view
+    assert!(w.off_view(p.at.add(v3(0, GIRL_HEAD, 0))) > fx::deg(150));
+    // turn round: she is there on the tick she is seen and seven more
+    // (SEEN_LINGER 8), and gone on the ninth
+    w.yaw = fx::TURN / 2;
+    let mut left = 0;
+    while w.phantom.is_some() {
+        w.tick(&Input::default());
+        left += 1;
+    }
+    assert_eq!(left, 9);
+}
+
+#[test]
+fn unseen_she_stays_behind_you_four_seconds() {
+    let (mut w, _) = before_curio(mall::CurioKind::MusicBox, ONE * 12 / 10, 0);
+    w.tick(&keys(USE));
+    w.tick(&Input::default());
+    let on = girl_ticks(&mut w, fire_button(), 1000);
+    assert_eq!(on.first(), Some(&646));
+    assert_eq!(on.len(), 240);
+    // wound again, it plays no more: it answers once
+    w.tick(&Input::default());
+    let mut heard = Vec::new();
+    drive(&mut w, fire_button(), 1000, &mut heard);
+    assert!(!heard.contains(&"music_box"));
+    assert!(w.phantom.is_none());
+}
+
+#[test]
+fn the_telephone_rings_when_you_walk_in_and_answering_it_stops_it() {
+    let (mut w, i) = before_curio(mall::CurioKind::Phone, ONE * 12 / 10, 0);
+    let mut heard = Vec::new();
+    let mut rings = Vec::new();
+    for k in 1..=220 {
+        w.tick(&Input::default());
+        if w.voices.iter().any(|v| v.recipe == "phone_ring") {
+            rings.push(k);
+        }
+    }
+    // set going on the first tick inside: half a second on, then three
+    // seconds apart
+    assert_eq!(rings, vec![31, 211]);
+    drive(&mut w, keys(USE), 1, &mut heard);
+    assert_eq!(w.held, Some(i));
+    let mut after = Vec::new();
+    for k in 1..=400 {
+        w.tick(&Input::default());
+        for v in &w.voices {
+            if v.recipe == "phone_ring" {
+                after.push((k, v.head, v.at.sub(w.body.origin).len_xz()));
+            }
+        }
+        heard.extend(w.marks.iter().map(|m| m.key));
+    }
+    // one more ring, six seconds after answering, 12 m behind you
+    assert_eq!(after.len(), 1);
+    assert_eq!(after[0].0, 6 * 60 - 1);
+    assert!(!after[0].1);
+    assert!(near(after[0].2, int(12), ONE / 50));
+    assert!(heard.contains(&"sub_giggle"));
+    drive(&mut w, keys(USE), 0, &mut heard);
+    assert_eq!(w.held, None);
+    assert_eq!(w.curios[i].at, w.mall.curios[i].at);
+    // answered again: only the dial's silence
+    let mut again = Vec::new();
+    drive(&mut w, Input::default(), 0, &mut again);
+    drive(&mut w, keys(USE), 400, &mut again);
+    assert!(!again.contains(&"giggle"));
+}
+
+#[test]
+fn every_sound_and_line_the_curios_use_is_in_data() {
+    let sounds: serde_json::Value =
+        serde_json::from_str(include_str!("../../../../data/sounds.json")).unwrap();
+    let strings: serde_json::Value =
+        serde_json::from_str(include_str!("../../../../data/strings.json")).unwrap();
+    let mut heard = Vec::new();
+    for (kind, back, pitch) in [
+        (mall::CurioKind::Toy, ONE * 12 / 10, -fx::deg(40)),
+        (mall::CurioKind::Camera, ONE * 12 / 10, 0),
+        (mall::CurioKind::MusicBox, ONE * 12 / 10, 0),
+        (mall::CurioKind::Phone, ONE * 12 / 10, 0),
+    ] {
+        let (mut w, _) = before_curio(kind, back, pitch);
+        drive(&mut w, Input::default(), 0, &mut heard);
+        drive(&mut w, keys(USE), 1, &mut heard);
+        for _ in 0..2 {
+            drive(&mut w, fire_button(), 400, &mut heard);
+        }
+        drive(&mut w, keys(USE), 300, &mut heard);
+    }
+    heard.sort();
+    heard.dedup();
+    for k in &heard {
+        let known = sounds["voices"].get(*k).is_some() || strings.get(*k).is_some();
+        assert!(known, "{k} is in neither data/sounds.json nor data/strings.json");
+    }
+    for k in [
+        "prompt_take_toy",
+        "prompt_hold_camera",
+        "sub_ring",
+        "giggle",
+        "wind_up",
+    ] {
+        assert!(heard.contains(&k), "{k} was not heard");
+    }
+}
+
+#[test]
+fn the_girl_never_stands_in_a_wall_a_counter_or_a_door() {
+    let w0 = playing();
+    let mut shown = 0;
+    for room in [3usize, 4, 5, 6, 7, 8, 9] {
+        let r = w0.mall.rooms[room];
+        for (fx_, fz) in [(1, 1), (1, 3), (3, 1), (3, 3), (2, 2)] {
+            for k in 0..8 {
+                let mut w = w0.clone();
+                let x = r.lo.x + (r.hi.x - r.lo.x) * fx_ / 4;
+                let z = r.lo.z + (r.hi.z - r.lo.z) * fz / 4;
+                w.body = Body::at(v3(x, 0, z));
+                w.yaw = k * fx::TURN / 8;
+                w.show_girl(ONE * 22 / 10, 0, GIRL_TICKS, false);
+                let Some(p) = w.phantom else { continue };
+                shown += 1;
+                let lo = p.at.add(v3(-ONE / 5, ONE / 10, -ONE / 5));
+                let hi = p.at.add(v3(ONE / 5, ONE * 11 / 10, ONE / 5));
+                let overlaps = |a: V3, b: V3| {
+                    lo.x < b.x && hi.x > a.x && lo.y < b.y && hi.y > a.y && lo.z < b.z && hi.z > a.z
+                };
+                for s in &w.mall.slabs {
+                    assert!(!overlaps(s.lo, s.hi), "room {room} at {x},{z} yaw {k}: in a slab");
+                }
+                for d in &w.mall.doors {
+                    assert!(!overlaps(d.lo, d.hi), "room {room}: in a door");
+                }
+            }
+        }
+    }
+    // most spots have room for her
+    assert!(shown > 200, "{shown}");
+}
