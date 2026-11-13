@@ -164,6 +164,7 @@ async function main() {
     document.body.dataset.phase = ui.phase;
     document.body.dataset.mode = ui.mode;
     document.body.dataset.output = ui.output;
+    document.body.dataset.walked = String(ui.walked_cm);
     $("title-screen").hidden = ui.phase !== "title";
     $("hud").hidden = ui.phase !== "play";
     $("dead").hidden = ui.phase !== "dead";

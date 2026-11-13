@@ -1204,6 +1204,8 @@ pub struct Ui {
     pub rounds: i32,
     pub box_rounds: i32,
     pub deaths: i32,
+    /// centimetres walked since the doors, for the browser check
+    pub walked_cm: i32,
 }
 
 pub fn clock(minute_of_day: i32, tick: i64) -> String {
@@ -1305,6 +1307,7 @@ pub fn ui(w: &World, cam: &Camera) -> Ui {
         rounds: loaded,
         box_rounds: w.revolver.box_rounds,
         deaths: w.deaths,
+        walked_cm: (w.walked as i64 * 100 / ONE as i64) as i32,
     }
 }
 
