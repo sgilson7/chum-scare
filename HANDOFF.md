@@ -2,7 +2,7 @@
 
 Stage 9, written by the agent. `C5 Consolidate in your own words`. A fresh session starts from this file, not from memory.
 
-Commit: eb4d0c5
+Commit: 2b0ec44
 
 ## What this is
 
