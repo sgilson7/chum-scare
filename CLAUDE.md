@@ -49,7 +49,18 @@ Each model call re-reads the whole context, so what is read once is paid for on 
 
 ## Rules agreed for this project
 
-None yet. When the person answers the opening entry's questions, add each rule that applies to every later session here, with its journal ID.
+Agreed in the journal on 2026-11-13 (entry `2026-11-13-agreed`, CH-Q1 to CH-Q22; the rules CH-1 to CH-12 are in the opening entry):
+
+- CH-1: every feel number lives in `movement::TUNING`, its Chumontillado value in a comment and a notebook row (CH-Q1 to CH-Q5).
+- CH-2: `engine/` is never edited; copy from it at c48d8dd.
+- CH-3, CH-4: scares are chosen in the core from the seed; a scare while the hands are busy spawns 20° or more outside the view (tests in `world/tests.rs`).
+- CH-5, CH-6: sound placement comes from `acoustics.rs`; Mono reaches every sound and brings the ring and subtitles (CH-Q16 A).
+- CH-7: every light is a fixture with a state; broken gives none (CH-Q20 to CH-Q22).
+- CH-9: fourth-wall content stays inside the tab: no notifications, permissions, personal data or off-origin requests (CH-Q18 A).
+- CH-10: bunny hops, surfing, slides, wall jumps and slams stay out (CH-Q2 to CH-Q4).
+- CH-11: while the hands are out, the mouse moves the hand, not the view.
+- CH-12: lists a player reads (scares, signs, store names) are the person's to approve (R1.11).
+- Settings only are kept between visits, through `web/save/store.js` (CH-Q6 A, R3.2).
 
 ## Stopping
 
