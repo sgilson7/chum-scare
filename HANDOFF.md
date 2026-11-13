@@ -2,7 +2,7 @@
 
 Stage 9, written by the agent. `C5 Consolidate in your own words`. A fresh session starts from this file, not from memory.
 
-Commit: see `git log -1` (rewritten at each deploy)
+Commit: 0cc6fe1
 
 ## What this is
 
