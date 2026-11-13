@@ -1,0 +1,30 @@
+# Second-order notebook
+
+Stage 6, kept by the agent as the work happens, not afterwards. `B3 Build in self-questioning`.
+
+The code and tests are the work; this file is the record about the work. It is where a decision the agent made alone, an assumption that turned out wrong, or something only the person can do becomes visible to the person. With the plan approved in advance, it is the main place those decisions surface before the person uses the tool. [`docs/procedure.md`](https://github.com/sgilson7/builder-setting/blob/main/docs/procedure.md#the-second-order-notebook) says why.
+
+One row per assumption, surprise or open item. **Kind** is *divergence* (what was assumed, what turned out to be true, what changed), *finding*, or *worklist* (the person's to do). Number rows by round (R1.1, R1.2, then R2.1 after the first triage) so a later round does not renumber an earlier one. **Rule** is the rule the row produced for later sessions, and where it now lives (`CLAUDE.md`, a test, `tests/breaks.json`), or blank. **Status** is *done*, *open*, or *person*; every *person* row is named in `HANDOFF.md`. `scripts/notebook_check.py` checks the form of each row and that the notebook is not empty once `PLAN.md` holds a decision, not what the rows say.
+
+| # | Kind | Assumed or found | What is true | What changed | Rule | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| R1.1 | finding | The untouched template plus `builder/`, `engine/`, `refs/` and `OPENING.md` would pass `./scripts/check.sh` | Steps 1 to 6 pass (38 tests); step 7 fails because `tests/tags.toml` has no rule for those four, which are reference copies, not this game's code | The plan's first step adds them to `ignore` in `tests/tags.toml` | `tests/tags.toml` | open |
+| R1.2 | divergence | Chumontillado's keys: Shift or C crouch | A horror game expects Shift to sprint; Ctrl still closes the tab (Chumontillado R1.5) | Proposed: Shift sprints, C crouches, Ctrl unused; asked as part of CH-Q5 | | open |
+| R1.3 | finding | The grant names the repository "Chum Scare" | A GitHub repository name cannot hold a space | Default `chum-scare` (page sgilson7.github.io/chum-scare), the game's title stays "Chum Scare"; asked as CH-Q7 | | open |
+| R1.4 | finding | Embark has published how ARC Raiders places sound in 3D | Its public posts describe recording and rules (mics at distance, state patterns, knee distance, backpack fill, Night Mode), not its spatializer, occlusion or middleware | Tab 3 keeps what Embark published apart from what I infer, and each inference is marked | | done |
+| R1.5 | divergence | The description says "pop out the barrel" | On a revolver the part that swings out holding the six chambers is the cylinder; the barrel is the tube in front | The journal and the glossary will say cylinder, with barrel kept for the tube | `GLOSSARY.md` (at the build) | done |
+| R1.6 | worklist | The agent makes the enemy models | The description puts the Blender models in `~/Documents/BuilderRefinedArtstyle`, outside this project | The first version uses primitive stand-ins in Chumontillado's manner; the spirit, cultist, mannequin and car models are the person's to make there, exported as glTF with the sizes tab 2 lists (CH-Q13) | | person |
+| R1.7 | finding | Settings such as Mono can be kept between visits | D17: the page keeps nothing in browser storage unless the brief allows `kits/saves/` | A player deaf in one ear would turn Mono on at every visit; asked as CH-Q6 | | open |
+| R1.8 | divergence | The journal keeps the template's colours | It is restyled dark and dusty to match the game; its structure, entries and chips are the template's | none to the form `journal_check.py` reads | | done |
+| R1.9 | finding | A "digital cleansing ritual" could touch the computer | Its steps are ordinary care done at the person's own hand (restart, update, clean the keyboard, clear this site's cache); the game itself does none of them | Rule CH-9: fourth-wall content stays inside the tab | CH-9, journal tab 5 | open |
+| R1.10 | finding | Every voice can use the browser's HRTF panner | HRTF is a convolution per voice and costs far more than equal-power panning | Proposed cap of 24 HRTF voices by priority, the rest equal-power or dropped; measured at the build | `MEASUREMENTS.md` (at the build) | open |
+| R1.11 | worklist | The scare list, the fourth-wall lines and the sign texts are the agent's | They are lists a reader will see, written by the agent (rule 12) | The person reads and edits tab 2's scare table and tab 5's sign list before the build ships them | | person |
+| R1.12 | finding | The start pack's cards all resolve in this project | `scripts/context_check.py` fails: the start pack names `docs.journal.the-opening-entry` and `kits.readme.the-kits`, which it cannot find here (ask.py found them under `builder/`); `journal_check.py` accepts both | Left as is; reported for Builder, not loosened. The plan's step 1 looks at whether the check's card set excludes `builder/` | | open |
+| R1.13 | divergence | The whole folder goes into the public repository | `builder/` (Builder at c836541) and `engine/` (Chumontillado at c48d8dd) are local reference copies with their own public homes | Both are in `.gitignore`; the CH-2 checksum check runs only where `engine/` exists | `.gitignore` | done |
+
+## Strings written by the agent
+
+Each reader-visible string the agent wrote, with its key, for the person to read.
+
+| Key | String |
+| --- | --- |

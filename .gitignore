@@ -1,0 +1,9 @@
+/target/
+/dist/
+/.venv/
+__pycache__/
+/mutants.out*/
+/notes/runs/
+/notes/index/
+/builder/
+/engine/

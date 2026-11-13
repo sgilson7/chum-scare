@@ -1,0 +1,77 @@
+# Builder specification
+
+Builder is a reusable technical setting for small browser tools built with coding agents: application rules live in a fast-tested Rust core, a thin WebAssembly shim only moves values across the browser boundary, and a static page renders the result. The separation gives the agent fast feedback while it builds and leaves a finished artifact that can be checked at the core, the WebAssembly boundary and the browser page.
+
+This file has three parts. **Builder requirements** define Builder; a project that drops one is no longer a Builder project, and the change should be stated as such. **Reference defaults** are what this template chose so that a copy works at once; change them by recording the change in `SECOND-ORDER.md` and in the table at the end of this file. **Project decisions** belong to the person building the tool, and they go in `BRIEF.md` or `PLAN.md`.
+
+## Builder requirements
+
+| # | Requirement | Enforced by |
+| --- | --- | --- |
+| R1 | The core (`crates/core`) holds every application rule and state transition. Scripts and tools that need a rule read the core's output; they do not recompute it. | review; `audit-boundary` prompt |
+| R2 | The core performs no browser, filesystem, network, clock, random-device or UI input or output. `cargo test` reaches all of it without a browser. | `core_source_has_no_io_and_no_nondeterminism` in `crates/core/tests/boundary.rs` |
+| R3 | The core's dependencies are on an explicit allowlist. | `core_dependencies_are_on_the_allowlist` |
+| R4 | Public core functions take ordinary values and return ordinary values or serialisable structures. The template's convention is strings in, `{"ok": ...}` or `{"error": "..."}` out, in `crates/core/src/api.rs`: the core describes the screen as a view model (`ui`), and settings, screens and flags come back through one function, `act(name, value)`. | `api.rs` tests; review |
+| R5 | The shim (`crates/shim`) uses `wasm-bindgen` and only translates values: it converts arguments, calls the core, and converts the result back. | `shim_decides_nothing` (no branch, loop or `?` in shim source) |
+| R6 | The page (`web/`) is static HTML, CSS and JavaScript. It draws what the core returns and does not recompute an application rule. | `page_keeps_no_rule_and_names_no_other_origin`; review |
+| R7 | The default build deploys as static files and makes no off-origin request on its default load-and-idle path, and the page does not navigate away on its own. A *declared off-origin feature* (online play, for example) is allowed when the brief names it, it loads only on a reader's action, its code is vendored and checksummed, and its origins are listed in one config file that a test matches against the CSP (`kits/online/`). | `tests/browser/check.py`; navigation scan in `boundary.rs`; the kit's fence test |
+| R8 | `./scripts/check.sh` runs the complete pre-deploy check, and CI runs the same file. | `.github/workflows/checks.yml` in the reference repository |
+| R9 | Each build follows the nine-stage procedure, and the agent does not deploy on its own judgement. It publishes only when the brief's Autonomy paragraph grants it. | `CLAUDE.md`, `AGENTS.md`, `HANDOFF.md` |
+
+**When a requirement seems to block necessary work, stop and say so.** Write a worklist row in `SECOND-ORDER.md` naming the requirement, what the feature needs, and the options you can see. A rule in the shim or the page is a second rulebook that the fast suite cannot see, so the answer is almost always to move the rule into the core.
+
+## Reference defaults
+
+| # | Default | Where | Why this default |
+| --- | --- | --- | --- |
+| D1 | Core allowlist: `serde`, `serde_json`. | `ALLOWED_DEPENDENCIES` in `boundary.rs` | enough for JSON in and out |
+| D2 | No floats, hash maps, clocks or randomness in the core. The banned names include `f32`, `f64`, `HashMap`, `HashSet`, `Instant`, `SystemTime`, `time`, `rand`, and, as input/output, `fs`, `io`, `net`, `env`, `process` and `thread`; name modules accordingly (`online`, not `net`). For geometry and physics use `fx.rs` (Q16.16, products through `fx::mul`); for chance, a seed passed in from the page and `rng.rs` (`kits/realtime/`). | `NONDETERMINISM_IDENTIFIERS` in `boundary.rs` | the same input gives the same output on every machine, so tests stay stable and replays, ghosts and lockstep play work. A project may allow `f32` instead if it bans platform maths (`sin`, `powf`, `mul_add`) and keeps a bit-exact replay test; record it as a change |
+| D3 | Page JavaScript holds no numeric literal other than 0 and 1, and no `Math`, `parseInt` or rounding. Presentation numbers (sizes, durations, audio) go in `data/*.json`; a canvas or WebGL page replays a draw list and assets the core sends (`kits/canvas/`); shaders live in `data/shaders/` and hold no number other than 0 and 1, taking rule values as uniforms. | `PAGE_FORBIDDEN_IDENTIFIERS`, `shaders_hold_no_numbers_of_their_own` | a number in the page is usually a copy of a rule |
+| D4 | Every HTML page, at any depth under `web/`, carries a Content-Security-Policy meta element with `default-src 'self'`, `connect-src 'self'`, `'wasm-unsafe-eval'` and `form-action 'none'`. | `every_page_sets_the_content_security_policy` | a second, browser-enforced limit on where the page can connect; it cannot stop navigation, so the browser check still watches requests and the scan watches navigation |
+| D5 | Reader-visible text lives in `data/`, and the page fetches it from its own origin. | `copy.rs` | content changes without touching rules |
+| D6 | `wasm-bindgen` pinned to `=0.2.127`; the build refuses a different CLI version. | `crates/shim/Cargo.toml`, `scripts/build.sh` | the generated glue must match the crate |
+| D7 | Browser check: Playwright 1.63.0 in Chromium, Firefox and WebKit, 10 s idle, then `tests/browser/interactions.py`. CI may run Chromium alone (`BUILDER_ENGINES=chromium`) when all three run locally before a push. `webkit-iphone` adds a phone profile. Interactions wait on selectors and `data-*` attributes, never on a fixed time. | `tests/browser/check.py` | the engines classroom machines run; a three-engine install on CI has hung for over fifteen minutes |
+| D8 | Mutation testing with `cargo-mutants`, and `scripts/break_tests.py`, as audits outside `check.sh`. | `scripts/mutants.sh`, `scripts/break_tests.py` | they take minutes; the everyday check must take seconds |
+| D9 | `cargo fmt --check` and `cargo clippy -D warnings`. | `scripts/check.sh` | |
+| D10 | The build stamps a content hash on every internal URL, fails on an unstamped one, verifies vendored files against `SHA256SUMS`, and writes `dist/build.txt` and `.nojekyll`. | `scripts/build.sh` | GitHub Pages caches files for ten minutes, so a returning reader would keep the old module after a deploy |
+| D11 | Release profile for size; a test profile at `opt-level = 2` with overflow checks on. | `Cargo.toml` | whole-run tests in unoptimised integer maths get slow enough to stop being run |
+| D12 | `rustfmt.toml` with `max_width = 110`. | `rustfmt.toml` | fewer rewrapped lines between scripted edits |
+| D13 | A pinned Rust toolchain. | `rust-toolchain.toml` | a newer Clippy on CI failed a build that passed locally |
+| D14 | `LICENSES.md` lists every asset, vendored file and borrowed piece of code with its terms. | review | a rights question is the person's, and needs a place to be asked |
+| D15 | `GLOSSARY.md` defines every term: a plain definition, numbers as `{placeholders}` the core fills, and a `Not:` line of words never used for it. The page shows definitions on hover. | `copy.rs`; `glossary.rs` tests | one name for each thing, kept by a test |
+| D16 | Reader-visible strings, glossary definitions and the README follow `TONE.md`; the phrases between its lint markers fail a test. | `no_text_uses_a_phrase_the_tone_file_rules_out` | stock phrasing is the easiest drift to catch mechanically |
+| D17 | The page uses no browser storage. A game that keeps progress copies `kits/saves/`, which allows one store file and tests every deployed build's save. | `no_storage.rs` | storage is a decision about a person's data |
+| D18 | When the brief names no style, 2D art uses the default style pack in `styles/default/`. The pack's colours and name appear nowhere else in Builder. | `scripts/check-style-leak.py` | a fallback that does not become Builder's identity |
+| D19 | Every project keeps a design journal unless `BRIEF.md`'s Journal section says `none`: an HTML page of dated entries beside the project (`../<project>-journal/`), its own repository, never pushed. It opens with the agent's reading of Builder and the brief, written before the plan, and its entries cite the rows of `SECOND-ORDER.md` and `TRIAGE.md`. | `scripts/journal_check.py` | the person reads the build in one place, with pictures, and the agent's reading of the rules is corrected before the plan rather than discovered in the code |
+| D20 | Questions for the person are answer chips in the journal: data in its `decisions.json`, each with exactly one default, drawn by `tools/journal/decisions.py`. An answer is cited by an *agreed* entry, and one that differs from the default by a `TRIAGE.md` row. | `scripts/journal_check.py` | replies to a list of questions shrank to one line ("the answers are in the log, build it"), and a co-designer can answer on a phone |
+| D21 | One agent does the work unless `BRIEF.md` names subagents. While iterating, `./scripts/quick-check.sh` runs only the steps the changed files need (`tests/tags.toml`); `./scripts/check.sh` runs before a handoff, a deploy or a publish. | `CLAUDE.md` rules 17 and 18; `quick_check.py --guard` in `check.sh` | subagents have cost 180,000 to 670,000 tokens apiece, and three-engine checks run in parallel drove a machine's load average past 60 |
+| D22 | Several views of one core (2D and 3D, a pixel view, an app shell) load the same WebAssembly module, byte for byte; each view is a page, never a second core. | `scripts/wasm_imports.py` | one engine to change and test; a fix reaches every view at once |
+| D23 | Online play uses `kits/online/`'s rollback session: guess the missing input, replay on a wrong guess, never more than `MAX_AHEAD` ticks ahead. Lockstep (`MAX_AHEAD = 0`) is for games where waiting costs nothing. | the kit's tests, run by the reference repository's `scripts/check-kits.sh` | lockstep makes every player feel the slowest connection on every tick |
+| D24 | Builder is read through cards: `tools/ask.py` cuts its documents and code into cards (a section, a spec row, a `CLAUDE.md` rule, a function or test) and returns the few that answer a question; `--start` gives the start pack. The journal and `STATE.md` cite cards as `card:<id>`, and earlier projects are read through one-page digests (`tools/digest.py`); code a digest names for copying is ported from those lines, not rewritten from the summary. | `scripts/context_check.py` (cards, start-pack budget, digests); `scripts/journal_check.py` (citations); `tests/builderqa.json` in the reference repository | an agent that reads every file at start-up carries it on every later call; a card costs a few hundred tokens and points to the lines worth opening |
+| D25 | `STATE.md` is the project's long-term memory, at most two pages, rewritten at each milestone, after each request recorded in `TRIAGE.md` and before a handoff, naming its commit. After a compaction the agent reads it and asks for cards instead of re-reading files; in Claude Code, `.claude/settings.json` puts it back after every compaction, with the work index's cards for its next step when the index is on. Long output goes through `./scripts/quiet.sh`. | `scripts/context_check.py` (size, commit, cards cited); `CLAUDE.md` rules 21 and 22 | what is dropped at a compaction can come back as a card, so the context can stay small without losing the decisions in force |
+| D26 | Token use is measured like check time: `python3 tools/tokens.py` logs a session's context at the first plan, peak, mean, compactions and total re-read in `notes/tokens.md`, and a handoff quotes the row. | `CLAUDE.md` rule 23 | "fewer tokens" is checkable only against a number |
+| D27 | The agent asks its own work before re-reading it: `tools/ask.py --mine` cuts the project's journal entries, notebook and triage rows, `STATE.md`, `PLAN.md`, commits, code (files still as the template has them excepted), run logs and the tool results its sessions have seen into cards, and `--target` does the same for a codebase the project explains. Ranking is keywords (BM25), with cosine similarity over a local embedding model merged in by rank when the model is installed (`scripts/setup-embed.sh`); `BUILDER_MEMORY=off` turns the work index off. | `tests/workqa.json` and BuilderQA in the reference check, each run with keyword and hybrid ranking (hybrid may not answer fewer); `tests/test_context_tools.py`; `CLAUDE.md` rule 24 | a compaction is cheap only if what it dropped can come back as a card; without that, an agent either keeps everything or re-reads whole files |
+| D28 | Context is watched, not remembered: after each tool call a hook tells the agent once when the context passes 200k, or two thirds of a compaction cap when one is set (and each 100k after), and the agent rewrites `STATE.md` and asks the person to `/compact`; before a long file is read whole, a hook names its parts. `./scripts/check.sh` and `./scripts/quick-check.sh` print only a summary unless `BUILDER_LOUD=1`. `STATE.md` and a filled-in `HANDOFF.md` are rewritten after each request recorded in `TRIAGE.md`. | `scripts/context_check.py` (a `TRIAGE.md` change after `STATE.md`'s last rewrite fails); `tests/test_context_tools.py`; `CLAUDE.md` rules 21, 22 and 24 | the first trial followed every rule a check held and slipped on every rule left to memory |
+| D29 | A file of more than about 200 lines is changed with edits, not written again whole; a needed rewrite gets a `SECOND-ORDER.md` row. | `CLAUDE.md` rule 25; the trial harness counts whole-file rewrites | a whole rewrite sends the file again and keeps both copies in the context |
+
+## Project decisions
+
+These stay with the person and go in `BRIEF.md` or `PLAN.md`:
+
+- what the tool does, for whom, and what "done" means, starting from the person's own description;
+- the content and its source, and who checks it;
+- any data a person enters, where it stays, and whether the page keeps it between visits (the reference default, D17, is no browser storage; the brief may allow it);
+- any crate added to the allowlist;
+- accessibility: how information is carried besides colour, and which input devices must work;
+- any third-party asset, likeness or recording, and any code borrowed without a licence;
+- any list an agent generated that a reader will see (names, labels, word lists);
+- any study of the people who use the tool, which needs approval before any data is kept;
+- the visual style, or `default`;
+- where the design journal lives, or `none` with the reason;
+- any feature that needs a server, a live model, an account, or a request to another origin. These fall outside the default build (R7). Say so in the brief and give the feature its own checks and approvals.
+
+## Changes to the defaults in this project
+
+| Default | Changed to | Reason | Recorded in |
+| --- | --- | --- | --- |
+| | | | |

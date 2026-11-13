@@ -1,0 +1,29 @@
+{
+  "env": {
+    "BUILDER_MEMORY": "off"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/builder/template/tools/context/after_compact.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/builder/template/tools/context/after_tool.py"
+          }
+        ]
+      }
+    ]
+  }
+}
