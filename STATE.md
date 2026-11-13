@@ -2,11 +2,11 @@
 
 The project's long-term memory, at most two pages. Rewrite it at each milestone (a stage boundary, a finished feature, a deploy) and before a handoff. After a compaction or in a new session, read this file and ask `tools/ask.py` for cards; do not re-read files it already summarises. `scripts/context_check.py` checks its size, its commit and the cards it cites.
 
-Commit: 2f4d5cd
+Commit: eb4d0c5
 
 ## Where the build is
 
-Stage 8 done: the first version is live at https://sgilson7.github.io/chum-scare/ (gh-pages built from 87c9ab4), checked live in three engines; journal page 7 and Live now record it, republished to the artifact. Answers CH-Q1 to CH-Q22 are recorded (all defaults but CH-Q8 B, T1; CH-Q12 note, T2). Triage round 1: T3 (volume slider) and T4 (signs fixed to their walls, turning to you in the chase) done in 2f4d5cd; journal entry `2026-11-13-fixes-t3-t4`.
+Stage 8 done: the first version is live at https://sgilson7.github.io/chum-scare/ (gh-pages built from 87c9ab4), checked live in three engines; journal page 7 and Live now record it, republished to the artifact. Answers CH-Q1 to CH-Q22 are recorded (all defaults but CH-Q8 B, T1; CH-Q12 note, T2). Triage round 1: T3 (volume slider) and T4 (signs fixed to their walls, turning to you in the chase) done in 2f4d5cd; journal entry `2026-11-13-fixes-t3-t4`. Round 2: T5 (scare census: `world/census.rs`, `examples/census.rs`, `tools/census.py`; journal page 8; questions CH-Q23 to CH-Q26 waiting) and T6 (cult easier to sneak past) in eb4d0c5, deployed.
 
 ## Decisions in force
 
@@ -14,11 +14,12 @@ Stage 8 done: the first version is live at https://sgilson7.github.io/chum-scare
 - Horror TUNING: walk 1.3, sprint 4.0 (6 s breath), crouch 40%, hop 3.0 m/s; accelerate 8, friction 6, stop_speed 0.5 (R2.4); all speed tech off (CH-10).
 - Settings kept by `kits/saves`' store (D17 changed, R3.2); nothing else is stored.
 - Signs: a facing per sign (R4.1), turned 30°/s only in the chase (R4.2), drawn by a core-made CSS matrix3d (R4.3).
-- Notebook R1.1 to R4.4; person rows R1.6 (Blender models), R1.11 (lists to read).
+- Cult (T6): ring (70, −8) r 4, walkers r 6; sees you only inside the court or once hunting; `NOTICE_FLOOR` 1/30; pendant at 56 m removed; door lamp moved to (84, −12). Census: careful 0/200 caught, careless 200/200.
+- Notebook R1.1 to R5.6; person rows R1.6 (Blender models), R1.11 (lists to read), R5.5 (play the court).
 
 ## What is next
 
-1. The person plays the live build and triages; each request becomes a TRIAGE row (T3 on).
+1. The person answers CH-Q23 to CH-Q26 on journal page 8 (record with `decisions.py --answers`) and plays the court (R5.5). Next T row: T7.
 2. Open: R2.6 (hand is one Verlet point), R3.4 (dust motes, bounce light); person rows R1.6, R1.11.
 
 ## Cards the next session needs
