@@ -54,6 +54,7 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R8.5 | finding | T12: she stands where the view points | In front of the camera's counter there is no room for her: she was inside the counter at every distance | She may also stand up to 2 m farther, behind the counter; where no spot is clear and in sight, only her giggle | `World::show_girl`, `GIRL_BEYOND`; `the_girl_never_stands_in_a_wall_…` | done |
 | R8.6 | finding | T12: a flag keeps each curio from answering twice | For the toy and the camera the flag changed nothing: the squeeze and picture counts already allow one answer, and the break test missed it | The flag is kept only for the music box and the telephone | `CurioState::spent`; `tests/breaks.json` | done |
 | R8.7 | divergence | Figures come from Blender (R1.6) | The little girl and the four curios are stand-in boxes like the others | They join the Blender list | `view::girl`, `view::curio` | done |
+| R9.1 | divergence | T13: "a little faster" | No speed was given | 50% of the walk (was 40%): 0.65 m/s; Chumontillado's 34 noted in the comment as before | `movement::TUNING.duck_speed_pct`; `crouch_walks_at_half_the_walk` | done |
 
 ## Strings written by the agent
 

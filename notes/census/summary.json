@@ -1,15 +1,15 @@
 {
  "methodical": {
   "player": "methodical",
-  "runs": 200,
+  "runs": 50,
   "minutes_before_chase": 4.19,
-  "scares_per_run": 7.95,
-  "scares_per_minute": 1.9,
+  "scares_per_run": 8.16,
+  "scares_per_minute": 1.95,
   "first_scare_s": 5.9,
-  "gap_median_s": 30.3,
-  "gap_p90_s": 55.1,
+  "gap_median_s": 30.1,
+  "gap_p90_s": 53.7,
   "gap_longest_s": 98.1,
-  "busy_share": 0.34,
+  "busy_share": 0.36,
   "busy_minutes": 0.64,
   "minutes_at_menace": [
    0.57,
@@ -20,80 +20,80 @@
   ],
   "rate_at_menace": [
    1.76,
-   1.25,
-   1.9,
-   2.06,
-   3.68
+   1.34,
+   1.89,
+   2.1,
+   4.29
   ],
   "kinds": {
-   "steps": 503,
-   "fall_crash": 359,
-   "door_creak": 253,
-   "shutter": 169,
-   "laugh": 126,
-   "pop_glass": 100,
-   "breath": 80
+   "steps": 124,
+   "fall_crash": 90,
+   "door_creak": 67,
+   "shutter": 42,
+   "laugh": 32,
+   "pop_glass": 27,
+   "breath": 26
   },
   "where": {
    "sight": {
-    "behind": 400,
-    "beside": 401,
-    "edge": 473,
-    "centre": 99
+    "behind": 96,
+    "beside": 106,
+    "edge": 117,
+    "centre": 26
    },
    "sound": {
-    "beside": 991,
-    "behind": 2188,
-    "edge": 7,
-    "centre": 10
+    "beside": 229,
+    "behind": 574,
+    "edge": 1,
+    "centre": 2
    }
   },
-  "glimpses_per_run": 2.37,
+  "glimpses_per_run": 2.36,
   "glimpse_off": [
    [
     34,
-    3
+    1
    ],
    [
     35,
-    35
+    9
    ],
    [
     36,
-    32
+    7
    ],
    [
     37,
-    30
+    6
    ],
    [
     38,
-    37
+    9
    ],
    [
     39,
-    29
+    15
    ]
   ],
-  "glimpse_dist_m": 7.8,
-  "mannequin_turns_per_run": 2.0,
+  "glimpse_dist_m": 7.6,
+  "mannequin_turns_per_run": 2.02,
   "possession_steps_per_run": 2.0,
   "possession_knocks_per_run": 3.0,
   "cult_caught_share": 0.0,
   "hurt_ticks": 0,
-  "escaped": 200
+  "escaped": 50
  },
  "brisk": {
   "player": "brisk",
-  "runs": 200,
+  "runs": 50,
   "minutes_before_chase": 1.69,
-  "scares_per_run": 3.52,
-  "scares_per_minute": 2.09,
+  "scares_per_run": 3.46,
+  "scares_per_minute": 2.05,
   "first_scare_s": 4.9,
-  "gap_median_s": 31.4,
-  "gap_p90_s": 55.8,
-  "gap_longest_s": 85.7,
-  "busy_share": 0.5,
+  "gap_median_s": 32.8,
+  "gap_p90_s": 52.9,
+  "gap_longest_s": 81.6,
+  "busy_share": 0.54,
   "busy_minutes": 0.37,
   "minutes_at_menace": [
    0.36,
@@ -104,66 +104,65 @@
   ],
   "rate_at_menace": [
    2.79,
-   0.24,
-   1.73,
-   2.47,
-   2.58
+   0.17,
+   1.93,
+   2.57,
+   1.27
   ],
   "kinds": {
-   "fall_crash": 287,
-   "steps": 161,
-   "door_creak": 108,
-   "shutter": 48,
-   "breath": 46,
-   "pop_glass": 29,
-   "laugh": 26
+   "fall_crash": 77,
+   "steps": 33,
+   "door_creak": 23,
+   "shutter": 20,
+   "laugh": 10,
+   "breath": 8,
+   "pop_glass": 2
   },
   "where": {
    "sight": {
-    "behind": 288,
-    "edge": 234,
-    "beside": 27,
-    "centre": 29
+    "behind": 73,
+    "edge": 61,
+    "beside": 4,
+    "centre": 2
    },
    "sound": {
-    "beside": 335,
-    "behind": 1088,
-    "centre": 4
+    "beside": 69,
+    "behind": 270
    }
   },
-  "glimpses_per_run": 1.17,
+  "glimpses_per_run": 1.22,
   "glimpse_off": [
    [
-    34,
-    1
-   ],
-   [
     35,
-    16
+    4
    ],
    [
     36,
-    14
+    3
    ],
    [
     37,
-    15
+    1
    ],
    [
     38,
-    22
+    7
    ],
    [
     39,
-    23
+    9
+   ],
+   [
+    40,
+    5
    ]
   ],
   "glimpse_dist_m": 7.6,
-  "mannequin_turns_per_run": 0.57,
+  "mannequin_turns_per_run": 0.54,
   "possession_steps_per_run": 1.0,
   "possession_knocks_per_run": 2.0,
   "cult_caught_share": 1.0,
-  "hurt_ticks": 33,
-  "escaped": 200
+  "hurt_ticks": 18,
+  "escaped": 50
  }
 }

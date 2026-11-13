@@ -62,13 +62,13 @@ fn walking_reaches_one_point_three_metres_a_second_and_no_more() {
 }
 
 #[test]
-fn crouch_walks_at_forty_percent() {
-    // 1.3 × 40% = 0.52 m/s
+fn crouch_walks_at_half_the_walk() {
+    // T13: 1.3 × 50% = 0.65 m/s
     let map = flat();
     let mut b = Body::at(V3::ZERO);
     run_body(&map, &mut b, keys(FORWARD | CROUCH), 120, 0);
     assert!(
-        near(b.speed(), ONE * 52 / 100, ONE / 100),
+        near(b.speed(), ONE * 65 / 100, ONE / 100),
         "{}",
         fx::decimal(b.speed(), 3)
     );
@@ -143,7 +143,8 @@ fn crouching_at_a_sprint_does_not_slide() {
         slid |= m.tick(&mut b, &keys(FORWARD | CROUCH), 0, 0).slid;
     }
     assert!(!slid && !b.sliding);
-    assert!(b.speed() <= ONE * 52 / 100 * 4 / 13 * 10 + ONE / 10);
+    // the sprint's 4.0 m/s at the crouch's 50%: 2.0 m/s (T13)
+    assert!(b.speed() <= ONE * 4 * 50 / 100 + ONE / 10);
 }
 
 #[test]

@@ -11,7 +11,7 @@ Stage 8 done: the first version is live at https://sgilson7.github.io/chum-scare
 ## Decisions in force
 
 - Autonomy: deploy when the checks pass (BRIEF.md); no subagents.
-- Horror TUNING: walk 1.3, sprint 4.0 (6 s breath), crouch 40%, hop 3.0 m/s; accelerate 8, friction 6, stop_speed 0.5 (R2.4); all speed tech off (CH-10).
+- Horror TUNING: walk 1.3, sprint 4.0 (6 s breath), crouch 50% (T13), hop 3.0 m/s; accelerate 8, friction 6, stop_speed 0.5 (R2.4); all speed tech off (CH-10).
 - Settings kept by `kits/saves`' store (D17 changed, R3.2); nothing else is stored.
 - Signs: a facing per sign (R4.1), turned 30°/s only in the chase (R4.2), drawn by a core-made CSS matrix3d (R4.3).
 - Cult (T6): ring (70, −8) r 4, walkers r 6; sees you only inside the court or once hunting; `NOTICE_FLOOR` 1/30; pendant at 56 m removed; door lamp moved to (84, −12). Census: careful 0/200 caught, careless 200/200.

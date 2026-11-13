@@ -107,8 +107,8 @@ pub const TUNING: Tuning = Tuning {
     // (was 10) R2.4: the journal's 4 ignored friction and crawled at 0.48
     // m/s. Ground acceleration must be at least the friction to hold any
     // speed: 8 × 1.3 / 60 = 0.173 a tick against 6 × 1.3 / 60 = 0.13, the
-    // walk in about 12 ticks; a crouch gains 8 × 0.52 / 60 = 0.069 against
-    // 6 × 0.5 / 60 = 0.05
+    // walk in about 12 ticks; a crouch gains 8 × 0.65 / 60 = 0.087 against
+    // 6 × 0.65 / 60 = 0.065
     accelerate: int(8),
     // no strafe gain (was 40)
     air_accelerate: int(2),
@@ -127,8 +127,8 @@ pub const TUNING: Tuning = Tuning {
     max_velocity: int(12),
     // rubble up to 0.35 m is walked over (was 0.4)
     step: ONE * 35 / 100,
-    // crouch walk 0.52 m/s (was 34)
-    duck_speed_pct: 40,
+    // crouch walk 0.65 m/s (was 34; 40 until T13)
+    duck_speed_pct: 50,
     // below the 3.0 hop (was 3.5)
     non_jump_velocity: int(2),
     // no strafing left to resolve (was 2)
