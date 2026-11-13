@@ -37,7 +37,12 @@ def run(page, check, engine):
     # Playwright's own style in WebKit and trip the CSP check)
     before = int(page.get_attribute("body", "data-walked") or "0")
     page.keyboard.down("KeyW")
-    page.wait_for_function("Number(document.body.dataset.walked) > " + str(before + 50), timeout=20000)
+    # poll the attribute: wait_for_function would evaluate a string, which
+    # the page's CSP refuses
+    for _ in range(200):
+        if int(page.get_attribute("body", "data-walked") or "0") > before + 50:
+            break
+        page.wait_for_timeout(100)
     page.keyboard.up("KeyW")
     after = int(page.get_attribute("body", "data-walked") or "0")
     check(after > before, f"W walks the player forward ({before} cm to {after} cm)")
