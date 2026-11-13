@@ -1168,14 +1168,68 @@ pub struct RingMark {
     pub life: i32,
 }
 
-/// A sign or line over the view: its key and where on screen (thousandths
-/// from the left and top), its size in thousandths.
+/// A sign over the view: its key and the CSS `matrix3d` (column order, in
+/// 65 536ths) that carries its text, one CSS pixel to `SIGN_CM_PER_PX`
+/// centimetres, from its centre onto the wall where it hangs, facing the way
+/// it faces (T4).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct SignAt {
     pub key: &'static str,
-    pub x: i32,
-    pub y: i32,
-    pub size: i32,
+    pub m: Vec<i64>,
+}
+
+/// Centimetres of sign per CSS pixel of its text.
+pub const SIGN_CM_PER_PX: i64 = 1;
+/// Half the widest sign, in metres: a sign is drawn only when both its ends
+/// are in front of the eye.
+const SIGN_HALF: Fx = ONE * 3 / 2;
+
+/// The CSS matrix for a sign at `at` facing `yaw`, seen through `cam` on a
+/// view `css_w` by `css_h` CSS pixels; None when it is behind the eye, its
+/// back is to the eye, or it is off the view.
+pub fn sign_matrix(cam: &Camera, at: V3, yaw: i32, css_w: i32, css_h: i32) -> Option<Vec<i64>> {
+    let n = crate::geom::facing(yaw, 0);
+    // its back is to you
+    if fx::mul(n.x, cam.eye.x - at.x) + fx::mul(n.z, cam.eye.z - at.z) <= 0 {
+        return None;
+    }
+    // the reader's right and the wall's down
+    let right = v3(n.z, 0, -n.x);
+    let down = v3(0, -ONE, 0);
+    let c = cam.vp.project(at);
+    for end in [at.add(right.scale(SIGN_HALF)), at.sub(right.scale(SIGN_HALF))] {
+        if cam.vp.project(end)[3] < ONE / 10 {
+            return None;
+        }
+    }
+    if c[3] <= 0 {
+        return None;
+    }
+    let x = fx::div(c[0], c[3]);
+    let y = fx::div(c[1], c[3]);
+    if x.abs() > ONE * 3 / 2 || y.abs() > ONE * 3 / 2 {
+        return None;
+    }
+    let col = |d: V3| -> [i64; 4] {
+        let p = cam.vp.project(at.add(d));
+        [0, 1, 2, 3].map(|k| (p[k] - c[k]) as i64)
+    };
+    // clip space to CSS pixels: x' = (x + w)·W/2, y' = (w − y)·H/2
+    let screen = |v: [i64; 4]| -> [i64; 4] {
+        [
+            (v[0] + v[3]) * css_w as i64 / 2,
+            (v[3] - v[1]) * css_h as i64 / 2,
+            v[2],
+            v[3],
+        ]
+    };
+    let per_px = |v: [i64; 4]| v.map(|e| e * SIGN_CM_PER_PX / 100);
+    let mut m = Vec::with_capacity(16);
+    m.extend_from_slice(&per_px(screen(col(right))));
+    m.extend_from_slice(&per_px(screen(col(down))));
+    m.extend_from_slice(&per_px(screen(col(n))));
+    m.extend_from_slice(&screen(c.map(|e| e as i64)));
+    Some(m)
 }
 
 /// The screen's description for the page (D5: the page looks each key up
@@ -1201,6 +1255,7 @@ pub struct Ui {
     pub reduce_flashes: bool,
     pub sensitivity: i32,
     pub tier: i32,
+    pub volume: i32,
     pub rounds: i32,
     pub box_rounds: i32,
     pub deaths: i32,
@@ -1223,7 +1278,7 @@ pub fn clock(minute_of_day: i32, tick: i64) -> String {
     format!("{}:{:02} {}", h12, m % 60, half)
 }
 
-pub fn ui(w: &World, cam: &Camera) -> Ui {
+pub fn ui(w: &World, cam: &Camera, css_w: i32, css_h: i32) -> Ui {
     let marks = w
         .marks
         .iter()
@@ -1238,31 +1293,20 @@ pub fn ui(w: &World, cam: &Camera) -> Ui {
         })
         .collect();
     let mut signs = Vec::new();
-    for s in &w.mall.signs {
+    for (s, &yaw) in w.mall.signs.iter().zip(w.sign_yaws.iter()) {
         let d = s.at.sub(cam.eye).len();
         if d > int(14) || w.phase != Phase::Play {
             continue;
         }
-        let c = cam.vp.project(s.at);
-        if c[3] <= 0 {
+        let Some(m) = sign_matrix(cam, s.at, yaw, css_w, css_h) else {
             continue;
-        }
-        let x = fx::div(c[0], c[3]);
-        let y = fx::div(c[1], c[3]);
-        if x.abs() > ONE || y.abs() > ONE {
-            continue;
-        }
+        };
         let mut sc = crate::trace::Scratch::default();
         let clear = !crate::trace::trace_box(&w.mall.map, &mut sc, cam.eye, s.at, V3::ZERO, V3::ZERO).hit();
         if !clear {
             continue;
         }
-        signs.push(SignAt {
-            key: s.key,
-            x: ((x + ONE) as i64 * 500 / ONE as i64) as i32,
-            y: ((ONE - y) as i64 * 500 / ONE as i64) as i32,
-            size: (fx::div(int(4), d.max(ONE)) as i64 * 1000 / ONE as i64).min(3000) as i32,
-        });
+        signs.push(SignAt { key: s.key, m });
     }
     let loaded = w
         .revolver
@@ -1304,6 +1348,7 @@ pub fn ui(w: &World, cam: &Camera) -> Ui {
         reduce_flashes: w.settings.reduce_flashes,
         sensitivity: w.settings.sensitivity,
         tier: w.settings.tier,
+        volume: w.settings.volume,
         rounds: loaded,
         box_rounds: w.revolver.box_rounds,
         deaths: w.deaths,
@@ -1334,6 +1379,37 @@ mod tests {
         let cam = camera(&w, ONE * 16 / 9, 0, 0);
         let n: usize = UNIFORMS.iter().map(|u| u.2).sum();
         assert_eq!(uniforms(&w, &cam).len(), n);
+    }
+
+    #[test]
+    fn a_sign_hangs_facing_its_way_and_is_not_drawn_from_behind() {
+        let mut w = World::new(1, 0);
+        w.act("start", "").unwrap();
+        w.yaw = 0;
+        w.pitch = 0;
+        let cam = camera(&w, ONE * 16 / 9, 0, 0);
+        // five metres straight ahead (yaw 0 looks along −z), facing back at
+        // the eye (180°): its centre is the middle of a 1600 by 900 view
+        let at = cam.eye.add(v3(0, 0, int(-5)));
+        let m = sign_matrix(&cam, at, fx::deg(180), 1600, 900).unwrap();
+        assert!(
+            (m[12] * 100 / m[15] - 80_000).abs() <= 100,
+            "{}",
+            m[12] * 100 / m[15]
+        );
+        assert!(
+            (m[13] * 100 / m[15] - 45_000).abs() <= 100,
+            "{}",
+            m[13] * 100 / m[15]
+        );
+        // its text runs to the reader's right: 100 px along it is right of centre
+        let x = (m[0] * 100 + m[12]) * 100 / (m[3] * 100 + m[15]);
+        assert!(x > 80_000 + 100, "{x}");
+        // turned away (0°: its face looks along −z, away from the eye): not drawn
+        assert_eq!(sign_matrix(&cam, at, 0, 1600, 900), None);
+        // facing you but behind you: not drawn
+        let behind = cam.eye.add(v3(0, 0, int(5)));
+        assert_eq!(sign_matrix(&cam, behind, 0, 1600, 900), None);
     }
 
     #[test]

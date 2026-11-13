@@ -440,6 +440,63 @@ fn the_same_seed_and_inputs_give_the_same_run() {
 }
 
 #[test]
+fn the_volume_is_a_percent_kept_with_the_settings() {
+    let mut w = playing();
+    assert_eq!(w.settings.volume, 100);
+    w.act("volume", "40").unwrap();
+    assert_eq!(w.settings.volume, 40);
+    let mut v = playing();
+    v.act("settings", &settings_text(&w.settings)).unwrap();
+    assert_eq!(v.settings.volume, 40);
+    w.act("volume", "250").unwrap();
+    assert_eq!(w.settings.volume, 100);
+    w.act("volume", "-5").unwrap();
+    assert_eq!(w.settings.volume, 0);
+    // settings kept before there was a volume load at full volume
+    let old = r#"{"version":1,"output":"mono","ring":true,"subtitles":true,"reduce_flashes":false,"sensitivity":100,"tier":1}"#;
+    let mut u = playing();
+    u.act("volume", "30").unwrap();
+    u.act("settings", old).unwrap();
+    assert_eq!(u.settings.volume, 100);
+    assert_eq!(u.settings.output, Output::Mono);
+}
+
+#[test]
+fn signs_keep_the_way_they_face_while_you_walk() {
+    let mut w = playing();
+    let want: Vec<i32> = w.mall.signs.iter().map(|s| s.yaw).collect();
+    for _ in 0..120 {
+        w.tick(&keys(FORWARD));
+    }
+    assert_eq!(w.sign_yaws, want);
+}
+
+#[test]
+fn in_the_chase_the_signs_turn_to_you_thirty_degrees_a_second() {
+    let mut w = playing();
+    w.spirit.chasing = true;
+    w.body.origin = v3(-ONE / 2, 0, 0);
+    let k = w.mall.signs.iter().position(|s| s.key == "sign_behind").unwrap();
+    // "Behind you!" at (2, 3) faces the doors (90°); from (−0.5, 0) the
+    // heading to you is atan(2.5 / 3) = 39.8°, 50.2° to turn
+    assert_eq!(w.sign_yaws[k], fx::deg(90));
+    for _ in 0..60 {
+        w.tick(&Input::default());
+    }
+    assert!(
+        (fx::wrap(w.sign_yaws[k] - fx::deg(60))).abs() <= fx::deg(1) / 2,
+        "after a second, 60°"
+    );
+    for _ in 0..60 {
+        w.tick(&Input::default());
+    }
+    assert!(
+        (fx::wrap(w.sign_yaws[k] - fx::deg(40))).abs() <= fx::deg(1),
+        "after two, it looks at you"
+    );
+}
+
+#[test]
 fn settings_kept_as_text_come_back_and_bad_text_leaves_the_defaults() {
     let mut w = playing();
     w.act("output", "mono").unwrap();

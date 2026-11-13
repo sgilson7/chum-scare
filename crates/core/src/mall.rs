@@ -160,6 +160,8 @@ pub struct ScarePoint {
 pub struct Sign {
     pub key: &'static str,
     pub at: V3,
+    /// the way its face looks, as a heading (0 looks along −z)
+    pub yaw: i32,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -685,18 +687,22 @@ pub fn mall() -> Mall {
         s(ScareKind::Glass, 950, -40, 4),
         s(ScareKind::Steps, 940, 30, 4),
     ];
-    let sign = |key: &'static str, x: i32, y: i32, z: i32| Sign {
+    let sign = |key: &'static str, x: i32, y: i32, z: i32, face: i32| Sign {
         key,
         at: v3(d(x), d(y), d(z)),
+        yaw: crate::fx::deg(face),
     };
+    // each faces where it is read from: storefront signs on the north wall
+    // look south into the wing (0), on the south wall north (180); signs
+    // read on the way in look west at the doors (90), the exit east (-90)
     let signs = vec![
-        sign("sign_behind", 20, 22, 30),
-        sign("sign_open_late", 520, 42, 46),
-        sign("sign_try_them", 100, 30, 48),
-        sign("sign_lost_child", 340, 14, 30),
-        sign("sign_dont_play", 500, 22, -46),
-        sign("sign_clock", 640, 40, 140),
-        sign("sign_exit", -75, 30, 0),
+        sign("sign_behind", 20, 22, 30, 90),
+        sign("sign_open_late", 520, 42, 46, 0),
+        sign("sign_try_them", 100, 30, 48, 0),
+        sign("sign_lost_child", 340, 14, 30, 90),
+        sign("sign_dont_play", 500, 22, -46, 180),
+        sign("sign_clock", 640, 40, 140, 0),
+        sign("sign_exit", -75, 30, 0, -90),
     ];
 
     Mall {

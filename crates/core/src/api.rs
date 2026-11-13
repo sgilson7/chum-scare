@@ -26,6 +26,8 @@ pub struct Game {
     aspect: i32,
     width: i32,
     height: i32,
+    /// the view in CSS pixels, for the signs' matrices
+    css: (i32, i32),
     noise_seed: u64,
     /// sounds placed after each tick, until the page takes them: none lost
     /// when a frame runs several ticks, none played twice when it runs none
@@ -45,6 +47,7 @@ impl Game {
             aspect: ONE * 16 / 9,
             width: 1,
             height: 1,
+            css: (1, 1),
             noise_seed: seed as u64 ^ 0x5EED,
             heard: Vec::new(),
         }
@@ -55,6 +58,7 @@ impl Game {
     pub fn resize(&mut self, css_w: i32, css_h: i32, dpr_pct: i32) -> [i32; 2] {
         let scale = [60, 85, 100][self.world.settings.tier.clamp(0, 2) as usize];
         let dpr = dpr_pct.clamp(100, 200);
+        self.css = (css_w.max(1), css_h.max(1));
         self.width = (css_w * dpr / 100 * scale / 100).max(1);
         self.height = (css_h * dpr / 100 * scale / 100).max(1);
         self.aspect = fx::div(self.width * ONE, self.height * ONE);
@@ -144,7 +148,8 @@ impl Game {
     }
 
     pub fn ui(&self) -> String {
-        serde_json::to_string(&view::ui(&self.world, &self.camera())).unwrap_or_default()
+        serde_json::to_string(&view::ui(&self.world, &self.camera(), self.css.0, self.css.1))
+            .unwrap_or_default()
     }
 
     /// White noise for the page's sounds: `len` samples from −1 to 1.
@@ -195,6 +200,7 @@ impl Game {
             "px_to_hundredths": 100,
             "pct": 100,
             "thousand": 1000,
+            "one": ONE,
         })
         .to_string()
     }

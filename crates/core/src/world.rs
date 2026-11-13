@@ -195,6 +195,8 @@ pub struct Settings {
     pub sensitivity: i32,
     /// 0 low, 1 medium, 2 high
     pub tier: i32,
+    /// the whole mix, percent (T3)
+    pub volume: i32,
 }
 
 impl Default for Settings {
@@ -206,6 +208,7 @@ impl Default for Settings {
             reduce_flashes: false,
             sensitivity: 100,
             tier: 1,
+            volume: 100,
         }
     }
 }
@@ -224,6 +227,8 @@ pub struct World {
     pub hand: Hand,
     pub flashlight: Flashlight,
     pub lights: Lights,
+    /// where each sign faces; fixed until the chase turns them (T4)
+    pub sign_yaws: Vec<i32>,
     pub door_open: Vec<Fx>,
     pub door_turns: Vec<Fx>,
     pub door_angle: i32,
@@ -307,6 +312,7 @@ impl World {
             hand: Hand::default(),
             flashlight: Flashlight::default(),
             lights: Lights::new(&m.fixtures),
+            sign_yaws: m.signs.iter().map(|s| s.yaw).collect(),
             door_open: vec![0; m.doors.len()],
             door_turns: vec![0; m.doors.len()],
             door_angle: 0,
@@ -482,6 +488,10 @@ impl World {
             "tier" => {
                 let v: i32 = value.parse().map_err(|_| format!("bad tier {value}"))?;
                 self.settings.tier = v.clamp(0, 2);
+            }
+            "volume" => {
+                let v: i32 = value.parse().map_err(|_| format!("bad volume {value}"))?;
+                self.settings.volume = v.clamp(0, 100);
             }
             "clock" => {
                 let v: i32 = value.parse().map_err(|_| format!("bad clock {value}"))?;
@@ -1394,6 +1404,13 @@ impl World {
     /// After R U N: the spirit hunts by sight and sound, grows, kills the
     /// cultists it reaches, and loses you after twelve quiet seconds.
     fn chase(&mut self) {
+        if self.spirit.chasing {
+            // T4: while you run back, every sign turns to look at you
+            for (s, yaw) in self.mall.signs.iter().zip(self.sign_yaws.iter_mut()) {
+                let to = sign_yaw_to(s.at, self.body.origin);
+                *yaw = turn_toward(*yaw, to, SIGN_TURN);
+            }
+        }
         if !self.spirit.chasing {
             // glimpses at the edge of the view (menace 3 and 4)
             self.spirit.glimpse = (self.spirit.glimpse - 1).max(0);
@@ -1544,6 +1561,7 @@ pub fn settings_text(s: &Settings) -> String {
         "reduce_flashes": s.reduce_flashes,
         "sensitivity": s.sensitivity,
         "tier": s.tier,
+        "volume": s.volume,
     })
     .to_string()
 }
@@ -1565,6 +1583,12 @@ pub fn settings_from(text: &str) -> Option<Settings> {
         reduce_flashes: v.get("reduce_flashes")?.as_bool()?,
         sensitivity: (v.get("sensitivity")?.as_i64()? as i32).clamp(20, 300),
         tier: (v.get("tier")?.as_i64()? as i32).clamp(0, 2),
+        // settings kept before the volume existed load at full volume
+        volume: v
+            .get("volume")
+            .and_then(|x| x.as_i64())
+            .unwrap_or(100)
+            .clamp(0, 100) as i32,
     })
 }
 
@@ -1577,6 +1601,15 @@ enum Target {
 
 pub fn per_minute(menace: i32) -> i32 {
     [1, 2, 3, 3, 4][menace.clamp(0, 4) as usize]
+}
+
+/// How far a sign turns toward you each tick of the chase: 30° a second.
+pub const SIGN_TURN: i32 = fx::deg(1) / 2;
+
+/// The heading a sign at `at` needs for its face to look at `p`.
+pub fn sign_yaw_to(at: V3, p: V3) -> i32 {
+    // facing(yaw) is (−sin, ·, −cos)
+    fx::atan2(at.x - p.x, at.z - p.z)
 }
 
 pub fn turn_toward(from: i32, to: i32, most: i32) -> i32 {

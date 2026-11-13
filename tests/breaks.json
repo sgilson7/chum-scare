@@ -1,16 +1,44 @@
 [
   {
-    "name": "an empty title is refused",
-    "file": "crates/core/src/page.rs",
-    "find": "if strings.title.trim().is_empty() {",
-    "replace": "if false {",
-    "test": "an_empty_title_is_rejected_by_name"
+    "name": "in the chase the signs turn to you (T4)",
+    "file": "crates/core/src/world.rs",
+    "find": "*yaw = turn_toward(*yaw, to, SIGN_TURN);",
+    "replace": "let _ = to;",
+    "test": "in_the_chase_the_signs_turn_to_you_thirty_degrees_a_second"
   },
   {
-    "name": "an unknown action is refused",
-    "file": "crates/core/src/api.rs",
-    "find": "other => return Err(format!(\"Unknown action \\\"{other}\\\".\")),",
-    "replace": "_ => {}",
-    "test": "act_refuses_an_unknown_action"
+    "name": "outside the chase the signs keep their facing (T4)",
+    "file": "crates/core/src/world.rs",
+    "find": "        if self.spirit.chasing {\n            // T4: while you run back",
+    "replace": "        if true {\n            // T4: while you run back",
+    "test": "signs_keep_the_way_they_face_while_you_walk"
+  },
+  {
+    "name": "a sign is not drawn from behind (T4)",
+    "file": "crates/core/src/view.rs",
+    "find": "if fx::mul(n.x, cam.eye.x - at.x) + fx::mul(n.z, cam.eye.z - at.z) <= 0 {",
+    "replace": "if false {",
+    "test": "a_sign_hangs_facing_its_way_and_is_not_drawn_from_behind"
+  },
+  {
+    "name": "a sign's text runs to the reader's right (T4)",
+    "file": "crates/core/src/view.rs",
+    "find": "let right = v3(n.z, 0, -n.x);",
+    "replace": "let right = v3(-n.z, 0, n.x);",
+    "test": "a_sign_hangs_facing_its_way_and_is_not_drawn_from_behind"
+  },
+  {
+    "name": "the volume stays between 0 and 100 (T3)",
+    "file": "crates/core/src/world.rs",
+    "find": "self.settings.volume = v.clamp(0, 100);",
+    "replace": "self.settings.volume = v;",
+    "test": "the_volume_is_a_percent_kept_with_the_settings"
+  },
+  {
+    "name": "settings kept before the volume load at full volume (T3)",
+    "file": "crates/core/src/world.rs",
+    "find": ".unwrap_or(100)",
+    "replace": ".unwrap_or(0)",
+    "test": "the_volume_is_a_percent_kept_with_the_settings"
   }
 ]

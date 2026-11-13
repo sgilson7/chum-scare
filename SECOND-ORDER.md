@@ -32,6 +32,10 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R3.3 | finding | Every browser grants pointer lock on a click | Headless engines (and some settings) refuse it | `web/input.js` falls back to plain pointer movement after `pointerlockerror` | | done |
 | R3.4 | divergence | Journal tab 6: dust motes in the beam, a beam cookie, room bounce light | The first version has dust and grime on surfaces, a ring in the beam and the eye's adaptation; no motes or per-room bounce | Left for the next round | | open |
 | R3.5 | finding | Look speed 12 angle units a pixel | 600 px of mouse turned only 40°, too slow to look down to load | 20 (0.11° a pixel at sensitivity 100) | | done |
+| R4.1 | divergence | T4: each sign faces where it is read from | The mall's table gave signs a place but no facing | Storefront signs face into the wing (north wall 0°, south wall 180°); "Behind you!" and the lost-child poster face the doors (90°), read on the way in; the exit sign faces back into the mall (−90°) | `mall.rs` signs table | done |
+| R4.2 | divergence | T4: "the signs can start to turn towards you" in the chase | No rate was given | 30° a second (`SIGN_TURN`), slow enough to see them turning; every sign turns, seen or not | `world::SIGN_TURN`; `in_the_chase_the_signs_turn_…` | done |
+| R4.3 | divergence | Signs are text over the view (journal tab 5) | A text overlay cannot face a direction without the projection | The core gives each sign a CSS `matrix3d` (view projection × the sign's plane, 1 CSS pixel = 1 cm); the page applies it; a sign is hidden when its back is to you or an end is behind the eye | `view::sign_matrix`; `a_sign_hangs_facing_its_way_…` | done |
+| R4.4 | finding | `tests/breaks.json` names this project's tests | Its two rows were the template's (`page.rs`, an unknown-action message this core does not have) | Replaced by six rows for T3 and T4; all six caught | `tests/breaks.json` | done |
 
 ## Strings written by the agent
 
@@ -39,3 +43,4 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 
 | Key | String |
 | --- | --- |
+| `settings_volume` | Volume |

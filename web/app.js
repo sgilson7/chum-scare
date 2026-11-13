@@ -59,6 +59,7 @@ async function main() {
   if (kept) game.act("settings", kept);
   let ui = parse(game.ui());
   audio.setOutput(ui.output);
+  audio.setVolume(ui.volume / N.pct);
 
   function act(name, value) {
     const r = parse(game.act(name, value));
@@ -69,6 +70,7 @@ async function main() {
     }
     ui = parse(game.ui());
     audio.setOutput(ui.output);
+    audio.setVolume(ui.volume / N.pct);
     store.write(game.settings());
     pressed();
     // buttons are pressed only after setup, so draw and lastUi exist by then
@@ -86,6 +88,7 @@ async function main() {
     };
     document.querySelectorAll("[data-act]").forEach((b) => b.setAttribute("aria-pressed", String(state[b.dataset.act] === b.dataset.value)));
     $("sens").textContent = String(ui.sensitivity);
+    document.querySelectorAll("input.volume").forEach((v) => (v.value = String(ui.volume)));
   }
 
   // the title's steps: flashes, the blessing, how you listen, the doors
@@ -139,6 +142,12 @@ async function main() {
     act("start", "");
     input.lock();
   });
+  document.querySelectorAll("input.volume").forEach((v) =>
+    v.addEventListener("input", () => {
+      audio.unlock();
+      act("volume", v.value);
+    }),
+  );
   $("slower").addEventListener("click", () => act("sensitivity", String(ui.sensitivity - display.sensitivity_step)));
   $("faster").addEventListener("click", () => act("sensitivity", String(ui.sensitivity + display.sensitivity_step)));
   canvas.addEventListener("click", () => {
@@ -193,15 +202,16 @@ async function main() {
         return li;
       }),
     );
-    // signs over the view where they stand
+    // signs on the walls where they hang: the core's matrix carries each
+    // from its centre onto the view (T4)
     $("signs").replaceChildren(
       ...ui.signs.map((s) => {
         const d = document.createElement("div");
-        d.textContent = say(s.key).split("{clock}").join(ui.clock);
+        const t = document.createElement("span");
+        t.textContent = say(s.key).split("{clock}").join(ui.clock);
         d.className = s.key === "sign_open_late" ? "neon" : "";
-        d.style.left = String((s.x * N.pct) / N.thousand) + "%";
-        d.style.top = String((s.y * N.pct) / N.thousand) + "%";
-        d.style.fontSize = String(s.size / N.thousand) + "em";
+        d.style.transform = "matrix3d(" + s.m.map((v) => v / N.one).join(",") + ")";
+        d.append(t);
         return d;
       }),
     );

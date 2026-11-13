@@ -50,8 +50,9 @@ button.quiet { background: none; border: none; color: var(--dim); text-decoratio
 #subs li::after { content: "]"; }
 #ring { position: absolute; left: 50%; top: 50%; width: 180px; height: 180px; margin: -90px 0 0 -90px; border-radius: 50%; border: 1px solid rgba(230, 220, 200, .12); }
 #ring-marks > div { position: absolute; left: 50%; top: 0; width: 6px; height: 34px; margin-left: -3px; border-radius: 3px; background: var(--blood); box-shadow: 0 0 8px var(--blood); transform-origin: 50% 90px; }
-#signs > div { position: absolute; transform: translate(-50%, -50%); font: 800 1em/1.1 "Arial Narrow", Arial, sans-serif; text-transform: uppercase; letter-spacing: .03em; color: #efe6cf; background: rgba(20, 18, 14, .78); border: 3px solid #3b352a; padding: .3em .55em; white-space: nowrap; opacity: .9; }
-#signs > div.neon { color: #ff5a6a; text-shadow: 0 0 8px #ff2340; background: none; border: none; }
+#signs > div { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+#signs > div > span { display: block; transform: translate(-50%, -50%); font: 800 18px/1.1 "Arial Narrow", Arial, sans-serif; text-transform: uppercase; letter-spacing: .03em; color: #efe6cf; background: rgba(20, 18, 14, .78); border: 3px solid #3b352a; padding: .3em .55em; white-space: nowrap; opacity: .9; }
+#signs > div.neon > span { font-size: 30px; color: #ff5a6a; text-shadow: 0 0 8px #ff2340; background: none; border: none; }
 #vignette { position: absolute; inset: 0; opacity: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(140, 0, 0, .75)); transition: opacity .15s; }
 body.hurt #vignette { opacity: 1; }
 #run { position: absolute; inset: 0; display: flex; gap: 6vw; align-items: center; justify-content: center; font: 900 clamp(90px, 18vw, 240px)/1 Impact, Haettenschweiler, "Arial Black", sans-serif; color: var(--blood); text-shadow: 0 0 24px rgba(200, 10, 10, .7), 6px 8px 0 #2a0000; }
@@ -70,3 +71,5 @@ body.flash #flash { animation: flash .5s ease-out 1; }
   #run span.slam, body.shake #view, body.flash #flash, #candle.lit #flame { animation: none; }
   #run span.slam { opacity: 1; transform: none; }
 }
+input.volume { width: 180px; accent-color: #c9b98f; }
+#step-go .row { margin-bottom: 12px; }

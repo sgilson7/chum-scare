@@ -17,6 +17,8 @@ export function makeAudio(recipes, rooms, makeNoise, makeImpulse) {
   let reverbs = [];
   let model = "HRTF";
   let isMono = false;
+  // the player's volume, 0 to 1, from the core's settings
+  let level = 1;
   const beds = new Map();
   const sec = (ms) => ms / K.thousand;
 
@@ -49,7 +51,7 @@ export function makeAudio(recipes, rooms, makeNoise, makeImpulse) {
     out.release.value = release;
     out.connect(ctx.destination);
     master = ctx.createGain();
-    master.gain.value = K.master;
+    master.gain.value = K.master * level;
     // one channel, explicitly: the browser sums left and right into it
     mono = ctx.createGain();
     mono.channelCount = 1;
@@ -192,6 +194,10 @@ export function makeAudio(recipes, rooms, makeNoise, makeImpulse) {
       model = output === "headphones" ? "HRTF" : "equalpower";
       isMono = output === "mono";
       route();
+    },
+    setVolume(v) {
+      level = v;
+      if (master) master.gain.value = K.master * level;
     },
     channels() {
       return isMono && mono ? mono.channelCount : out ? out.channelCount : 0;

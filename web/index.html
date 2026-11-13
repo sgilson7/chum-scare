@@ -54,6 +54,7 @@
       </div>
     </section>
     <section id="step-go" class="step" hidden>
+      <div class="row"><span id="volume-go" data-text="settings_volume"></span><input type="range" class="volume" min="0" max="100" step="5" aria-labelledby="volume-go"></div>
       <p class="controls" data-text="controls"></p>
       <button type="button" id="enter" class="big" data-text="enter"></button>
     </section>
@@ -68,6 +69,8 @@
         <button type="button" data-act="output" data-value="speakers" data-text="output_speakers"></button>
         <button type="button" data-act="output" data-value="mono" data-text="output_mono"></button>
       </div>
+      <span id="volume-pause" data-text="settings_volume"></span>
+      <div class="row"><input type="range" class="volume" min="0" max="100" step="5" aria-labelledby="volume-pause"></div>
       <span data-text="settings_ring"></span>
       <div class="row"><button type="button" data-act="ring" data-value="on" data-text="on"></button><button type="button" data-act="ring" data-value="off" data-text="off"></button></div>
       <span data-text="settings_subtitles"></span>
