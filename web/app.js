@@ -71,6 +71,9 @@ async function main() {
     audio.setOutput(ui.output);
     store.write(game.settings());
     pressed();
+    // buttons are pressed only after setup, so draw and lastUi exist by then
+    lastUi = "";
+    draw();
   }
   // buttons show which setting is on
   function pressed() {
