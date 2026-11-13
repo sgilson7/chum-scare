@@ -149,6 +149,14 @@ pub struct Spirit {
     pub chase_ticks: i32,
 }
 
+/// The court's fuse box (T14): on, thrown off until a tick, or shot dead.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Breaker {
+    On,
+    Thrown(i64),
+    Shot,
+}
+
 /// Where a curio is now and what it has done (T12).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CurioState {
@@ -312,6 +320,11 @@ pub struct World {
     pub flash: i32,
     pub cues: Vec<(i64, Cue)>,
     pub rang: bool,
+    /// T14: the fuse box, what its lamps were before it cut them, and how
+    /// long the cult stays blind in the sudden dark
+    pub breaker: Breaker,
+    pub breaker_saved: Vec<(usize, crate::lights::State)>,
+    pub dazzled: i32,
     pub debris: Vec<Debris>,
     pub voices: Vec<Voice>,
     pub marks: Vec<Mark>,
@@ -423,6 +436,9 @@ impl World {
             flash: 0,
             cues: Vec::new(),
             rang: false,
+            breaker: Breaker::On,
+            breaker_saved: Vec::new(),
+            dazzled: 0,
             debris: Vec::new(),
             voices: Vec::new(),
             marks: Vec::new(),
@@ -747,12 +763,16 @@ impl World {
         }
         self.steps_due();
         self.curio_time();
+        self.fuse_time();
         let moving = self.body.speed() > ONE / 3;
         let want = if moving && self.revolver.kick == 0 { ONE } else { 0 };
         self.gun_up = fx::approach(self.gun_up, want, ONE / 24);
         // the eye adapts over about three seconds
         let lit = self.lit_at(self.eye()).min(ONE * 2);
-        self.exposure = fx::approach(self.exposure, ONE * 3 / 2 - lit / 2, ONE / 180);
+        // T16: it brightens the dark only a little (was up to 1.5×): the
+        // dark stays dark
+        let want = (ONE * 11 / 10 - lit / 4).clamp(ONE * 3 / 4, EXPOSURE_DARK);
+        self.exposure = fx::approach(self.exposure, want, ONE / 180);
         self.outcome();
     }
 
@@ -795,11 +815,15 @@ impl World {
                 c.sub(origin).len_xz() < REACH && self.off_view(c) < CURIO_LOOK
             })
             .min_by_key(|&i| self.curios[i].at.sub(eye).len());
+        let fusebox = self.mall.fusebox;
+        let near_box = fusebox.sub(eye).len() < REACH && self.off_view(fusebox) < fx::deg(40);
         if self.mode == Mode::Look {
             if near_spare {
                 self.prompt = "prompt_take_box";
             } else if let Some(i) = near_curio {
                 self.prompt = take_prompt(self.mall.curios[i].kind);
+            } else if near_box && self.breaker == Breaker::On {
+                self.prompt = "prompt_breaker";
             } else if near_hide.is_some() {
                 self.prompt = "prompt_hide";
             }
@@ -814,6 +838,11 @@ impl World {
             }
             if let Some(i) = near_curio {
                 self.pick_up(i);
+                return;
+            }
+            if near_box && self.breaker == Breaker::On {
+                self.say("breaker", self.mall.fusebox, ONE * 3 / 10, None);
+                self.cut_power(Breaker::Thrown(self.tick + BREAKER_TICKS));
                 return;
             }
             if let Some(h) = near_hide {
@@ -994,7 +1023,12 @@ impl World {
     /// shots, the dynamo.
     fn noise(&mut self, at: V3, loud: Fx) {
         let n = self.cultists.len();
+        // T14: in the sudden dark they call to each other and hear nothing
+        let deaf = self.dazzled > 0;
         for i in 0..n {
+            if deaf {
+                break;
+            }
             let c = self.cultists[i];
             if c.mind == Mind::Dead || c.mind == Mind::Flee {
                 continue;
@@ -1125,7 +1159,15 @@ impl World {
         self.blackout = Some(self.tick);
         self.lights.wave = Some((self.tick + HZ, from));
         self.spirit.chasing = true;
-        self.spirit.at = v3(int(100), 0, int(-4));
+        // T15: it rises in whichever back corner of the store is farther
+        // from you (it used to rise 2 m from where you could stand)
+        let me = self.body.origin;
+        let corners = [v3(int(101), 0, int(-4)), v3(int(101), 0, int(4))];
+        self.spirit.at = if corners[0].sub(me).len_xz() >= corners[1].sub(me).len_xz() {
+            corners[0]
+        } else {
+            corners[1]
+        };
         self.spirit.size = ONE * 11 / 10;
         self.spirit.last_known = self.body.origin;
         self.spirit.unseen = 0;
@@ -1189,6 +1231,9 @@ impl World {
                 );
             }
         }
+        if self.breaker != Breaker::Shot {
+            consider(ray_ball(eye, dir, self.mall.fusebox, ONE / 4), Target::Fusebox);
+        }
         for (i, f) in self.mall.fixtures.iter().enumerate() {
             if f.kind != FixtureKind::Moon && self.lights.states[i] != crate::lights::State::Broken {
                 consider(ray_ball(eye, dir, f.at, ONE * 35 / 100), Target::Fixture(i));
@@ -1209,6 +1254,11 @@ impl World {
                         o.goal = eye;
                     }
                 }
+            }
+            Some(Target::Fusebox) => {
+                // T14: dark for good, but they heard the shot
+                self.say("sparks", self.mall.fusebox, ONE * 7 / 10, None);
+                self.cut_power(Breaker::Shot);
             }
             Some(Target::Fixture(i)) => {
                 if self.lights.break_one(i, &self.mall.fixtures) {
@@ -1680,6 +1730,54 @@ impl World {
         }
     }
 
+    // T14: the fuse box ----------------------------------------------------
+
+    /// The court's lamps go out; every cultist is blind for a moment.
+    fn cut_power(&mut self, to: Breaker) {
+        if self.breaker == Breaker::On {
+            self.breaker_saved = self
+                .mall
+                .breaker_feeds
+                .iter()
+                .map(|&i| (i, self.lights.states[i]))
+                .collect();
+            for &(i, _) in &self.breaker_saved {
+                self.lights.states[i] = crate::lights::State::Broken;
+            }
+            self.dazzled = DAZZLE_TICKS;
+            for c in self.cultists.iter() {
+                if c.mind != Mind::Dead {
+                    let at = c.at.add(v3(0, ONE * 16 / 10, 0));
+                    self.voices.push(Voice {
+                        recipe: "mutter",
+                        at,
+                        loud: ONE * 6 / 10,
+                        head: false,
+                        marked: None,
+                    });
+                }
+            }
+        }
+        self.breaker = to;
+    }
+
+    /// Someone throws the breaker back when its time is up; the lamps come
+    /// on as they were, unless the blackout has broken everything since.
+    fn fuse_time(&mut self) {
+        self.dazzled = (self.dazzled - 1).max(0);
+        if let Breaker::Thrown(until) = self.breaker {
+            if self.tick >= until {
+                self.breaker = Breaker::On;
+                if self.blackout.is_none() {
+                    for &(i, was) in &self.breaker_saved {
+                        self.lights.states[i] = was;
+                    }
+                }
+                self.say("breaker", self.mall.fusebox, ONE * 3 / 10, Some("sub_breaker"));
+            }
+        }
+    }
+
     fn steps_due(&mut self) {
         let now = self.tick;
         let due: Vec<V3> = self
@@ -1813,8 +1911,13 @@ impl World {
                 if self.body.ducked {
                     s /= 2;
                 }
-                // too dim or far to make out: nothing
-                sight = if s < NOTICE_FLOOR { 0 } else { s };
+                // too dim or far to make out: nothing; and nothing at all
+                // while their eyes are still lost in the sudden dark (T14)
+                sight = if s < NOTICE_FLOOR || self.dazzled > 0 {
+                    0
+                } else {
+                    s
+                };
             }
             match c.mind {
                 Mind::Flee => {
@@ -1981,6 +2084,10 @@ impl World {
         // 1.1 m to 4 m over three minutes
         let grow = (s.chase_ticks as i64 * (ONE * 29 / 10) as i64 / (180 * HZ)) as Fx;
         s.size = (ONE * 11 / 10 + grow).min(int(4));
+        // T15: it stands where it rose for a moment before it comes
+        if s.chase_ticks <= RISE_TICKS {
+            return;
+        }
         s.unseen += 1;
         let me = self.body.origin;
         let hidden = matches!(self.mode, Mode::Hidden(_));
@@ -2145,6 +2252,7 @@ pub fn settings_from(text: &str) -> Option<Settings> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Target {
     Possessed,
+    Fusebox,
     Cultist(usize),
     Fixture(usize),
 }
@@ -2195,6 +2303,17 @@ pub const GIRL_BEYOND: Fx = 2 * ONE;
 /// how many phrases the music box plays, how often the telephone rings
 pub const TUNE_PHRASES: i32 = 8;
 pub const RINGS: i64 = 6;
+
+/// T14: how long the thrown breaker keeps the court dark, and how long the
+/// sudden dark blinds the cult
+pub const BREAKER_TICKS: i64 = 40 * HZ;
+pub const DAZZLE_TICKS: i32 = 12 * HZ as i32;
+
+/// T15: how long the spirit stands where it rose before it hunts
+pub const RISE_TICKS: i32 = 3 * HZ as i32;
+
+/// T16: the most the eye brightens the dark
+pub const EXPOSURE_DARK: Fx = ONE * 105 / 100;
 /// in the head: the right hand, and the right ear for the receiver
 pub const HAND: V3 = V3 {
     x: ONE / 5,

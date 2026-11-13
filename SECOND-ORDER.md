@@ -55,6 +55,11 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R8.6 | finding | T12: a flag keeps each curio from answering twice | For the toy and the camera the flag changed nothing: the squeeze and picture counts already allow one answer, and the break test missed it | The flag is kept only for the music box and the telephone | `CurioState::spent`; `tests/breaks.json` | done |
 | R8.7 | divergence | Figures come from Blender (R1.6) | The little girl and the four curios are stand-in boxes like the others | They join the Blender list | `view::girl`, `view::curio` | done |
 | R9.1 | divergence | T13: "a little faster" | No speed was given | 50% of the walk (was 40%): 0.65 m/s; Chumontillado's 34 noted in the comment as before | `movement::TUNING.duck_speed_pct`; `crouch_walks_at_half_the_walk` | done |
+| R9.2 | divergence | T14: "turn off some lights over the cults so you can run by" | With only the lamps out, sprinting was still caught: the footsteps had all six searching before the door | The sudden dark also leaves them blind and deaf for 12 s (`DAZZLE_TICKS`), calling to each other; the lamps stay out 40 s (`BREAKER_TICKS`), then someone throws the breaker back | `World::cut_power`, `World::noise`; `with_the_breaker_thrown_…` | done |
+| R9.3 | divergence | T14: shooting the box | Shot and thrown would be the same but for permanence | Shot: dark for good, but the shot's noise brings them toward the box (its own search code was redundant and taken out: the break test missed it) | `Target::Fusebox`; `a_shot_fuse_box_…` | done |
+| R9.4 | finding | T14: placing the box | The candles at the ring and the moon are not on the breaker, so the ring stays lit and the court is moonlit | Only the court's two lamps are fed (`breaker_feeds`); the box is 14 m from the nearest walker | `mall::fusebox` | done |
+| R9.5 | finding | T15: the second report reads as the spirit stuck on the store's doorway | A doorway fix passed its test with or without the fix: traced from four places in the court, the spirit always leaves the store. Read as being caught at the door, the same cause as the first report | Doorway fix reverted; the far corner and the 3 s rise fix both reports | `World::begin_chase`, `RISE_TICKS` | done |
+| R9.6 | divergence | T16 asks for darker dark and brighter lamps | Only what you see changes; the cult's sight still uses `lit_at`, so sneaking is as it was. The numbers are first guesses for you to judge by eye | Ambient, fog, adaptation and lamp gain in `view.rs` and `world.rs` | `view::AMBIENT`, `FOG`, `LAMP_GAIN`; `world::EXPOSURE_DARK` | person |
 
 ## Strings written by the agent
 
@@ -83,3 +88,5 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `sub_squeak` | A toy squeaks |
 | `sub_ring` | A telephone rings |
 | `sub_music` | A music box plays |
+| `prompt_breaker` | E: throw the breaker. The court goes dark. |
+| `sub_breaker` | A breaker clunks back on |

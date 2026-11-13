@@ -216,6 +216,10 @@ pub struct Mall {
     /// the cursed store's room and the ritual's centre
     pub cursed: usize,
     pub ring: V3,
+    /// T14: the court's fuse box, on its west wall north of the entrance,
+    /// and the fixtures it feeds (the court's lamps)
+    pub fusebox: V3,
+    pub breaker_feeds: Vec<usize>,
 }
 
 /// Tenths of a metre, for the tables below.
@@ -689,6 +693,18 @@ pub fn mall() -> Mall {
         });
     }
 
+    // T14: the lamps over the court go through the fuse box; candles and
+    // the moon do not
+    let fusebox = v3(d(603), d(14), d(90));
+    let breaker_feeds = fixtures
+        .iter()
+        .enumerate()
+        .filter(|(_, f)| {
+            f.kind == FixtureKind::Lamp && f.at.x > i(60) && f.at.x < i(90) && f.at.z.abs() < i(15)
+        })
+        .map(|(k, _)| k)
+        .collect();
+
     let pr = |kind: PropKind, x: i32, z: i32, yaw: i32| Prop {
         kind,
         at: v3(d(x), 0, d(z)),
@@ -804,6 +820,8 @@ pub fn mall() -> Mall {
         exit_x: i(-7),
         cursed: 11,
         ring,
+        fusebox,
+        breaker_feeds,
     }
 }
 

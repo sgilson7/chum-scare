@@ -771,6 +771,36 @@
    "repeat": 1,
    "repeat_ms": 0,
    "jitter": 0.15
+  },
+  "breaker": {
+   "noise": 0.7,
+   "noise_ms": 70,
+   "filter": "lowpass",
+   "filter_hz": 900,
+   "q": 0.8,
+   "tone": 0.3,
+   "tone_hz": 120,
+   "tone_to_hz": 60,
+   "tone_ms": 90,
+   "wave": "square",
+   "repeat": 1,
+   "repeat_ms": 0,
+   "jitter": 0.1
+  },
+  "sparks": {
+   "noise": 0.8,
+   "noise_ms": 500,
+   "filter": "highpass",
+   "filter_hz": 3000,
+   "q": 0.7,
+   "tone": 0.2,
+   "tone_hz": 8000,
+   "tone_to_hz": 2000,
+   "tone_ms": 400,
+   "wave": "sawtooth",
+   "repeat": 6,
+   "repeat_ms": 60,
+   "jitter": 0.4
   }
  },
  "beds": {

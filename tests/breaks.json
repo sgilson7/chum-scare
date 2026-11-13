@@ -72,8 +72,8 @@
   {
     "name": "too faint to make out is nothing (T6)",
     "file": "crates/core/src/world.rs",
-    "find": "sight = if s < NOTICE_FLOOR { 0 } else { s };",
-    "replace": "sight = s;",
+    "find": "sight = if s < NOTICE_FLOOR || self.dazzled > 0 {",
+    "replace": "sight = if self.dazzled > 0 {",
     "test": "the_careful_and_the_wary_get_past_the_cult_and_the_careless_do_not"
   },
   {
@@ -219,7 +219,7 @@
   {
     "name": "answering the telephone stops its ringing (T12)",
     "file": "crates/core/src/world.rs",
-    "find": "        self.cues\n            .retain(|(_, c)| !matches!(c, Cue::Sound { recipe: \"phone_ring\", .. }));",
+    "find": "        self.cues.retain(|(_, c)| {\n            !matches!(\n                c,\n                Cue::Sound {\n                    recipe: \"phone_ring\",\n                    ..\n                }\n            )\n        });",
     "replace": "",
     "test": "the_telephone_rings_when_you_walk_in_and_answering_it_stops_it"
   },
@@ -243,5 +243,54 @@
     "find": "        if self.curios[i].spent {\n            return;\n        }\n        self.curios[i].spent = true;",
     "replace": "",
     "test": "the_telephone_rings_when_you_walk_in_and_answering_it_stops_it"
+  },
+  {
+    "name": "the sudden dark leaves the cult deaf (T14)",
+    "file": "crates/core/src/world.rs",
+    "find": "        let deaf = self.dazzled > 0;",
+    "replace": "        let deaf = false;",
+    "test": "with_the_breaker_thrown_you_can_sprint_past_the_cult_and_turn_the_handle"
+  },
+  {
+    "name": "the thrown breaker puts the court's lamps out (T14)",
+    "file": "crates/core/src/world.rs",
+    "find": "                self.lights.states[i] = crate::lights::State::Broken;",
+    "replace": "",
+    "test": "the_breaker_feeds_the_courts_two_lamps_and_comes_back_on_after_forty_seconds"
+  },
+  {
+    "name": "the breaker comes back on (T14)",
+    "file": "crates/core/src/world.rs",
+    "find": "            if self.tick >= until {",
+    "replace": "            if false && self.tick >= until {",
+    "test": "the_breaker_feeds_the_courts_two_lamps_and_comes_back_on_after_forty_seconds"
+  },
+  {
+    "name": "the spirit stands while it rises (T15)",
+    "file": "crates/core/src/world.rs",
+    "find": "        if s.chase_ticks <= RISE_TICKS {\n            return;\n        }",
+    "replace": "",
+    "test": "the_spirit_rises_in_the_far_corner_and_stands_three_seconds"
+  },
+  {
+    "name": "the spirit rises in the far corner (T15)",
+    "file": "crates/core/src/world.rs",
+    "find": "        self.spirit.at = if corners[0].sub(me).len_xz() >= corners[1].sub(me).len_xz() {",
+    "replace": "        self.spirit.at = if true {",
+    "test": "the_spirit_rises_in_the_far_corner_and_stands_three_seconds"
+  },
+  {
+    "name": "the eye brightens the dark only a little (T16)",
+    "file": "crates/core/src/world.rs",
+    "find": "pub const EXPOSURE_DARK: Fx = ONE * 105 / 100;",
+    "replace": "pub const EXPOSURE_DARK: Fx = ONE * 3 / 2;",
+    "test": "ten_seconds_in_the_dark_the_eye_brightens_it_by_no_more_than_five_percent"
+  },
+  {
+    "name": "lamps draw half again their power (T16)",
+    "file": "crates/core/src/view.rs",
+    "find": "pub const LAMP_GAIN: Fx = ONE * 3 / 2;",
+    "replace": "pub const LAMP_GAIN: Fx = ONE;",
+    "test": "a_lamp_draws_half_again_its_power"
   }
 ]

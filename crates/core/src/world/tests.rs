@@ -950,8 +950,10 @@ fn the_camera_shows_her_in_the_second_flash_and_only_while_it_lasts() {
     let first = w.phantom.expect("she is in the second picture");
     assert!(w.off_view(first.at.add(v3(0, GIRL_HEAD, 0))) < fx::deg(35));
     // the flash is the brightest light there is, at the hand
-    let flash = crate::view::lights(&w, w.eye())
+    let eye = w.eye();
+    let flash = crate::view::lights(&w, eye)
         .into_iter()
+        .filter(|l| l.at.sub(eye).len() < ONE / 2)
         .map(|l| l.rgb.x)
         .max()
         .unwrap();
@@ -976,8 +978,10 @@ fn with_flashes_reduced_the_camera_flash_is_a_third_as_bright() {
     w.tick(&keys(USE));
     w.tick(&Input::default());
     w.tick(&fire_button());
-    let flash = crate::view::lights(&w, w.eye())
+    let eye = w.eye();
+    let flash = crate::view::lights(&w, eye)
         .into_iter()
+        .filter(|l| l.at.sub(eye).len() < ONE / 2)
         .map(|l| l.rgb.x)
         .max()
         .unwrap();
@@ -1147,4 +1151,206 @@ fn the_girl_never_stands_in_a_wall_a_counter_or_a_door() {
     }
     // most spots have room for her
     assert!(shown > 200, "{shown}");
+}
+
+// T14: the fuse box ------------------------------------------------------
+
+/// From the fuse box, light off and standing, sprint along the court's
+/// north side to the cursed store's door, then crouch at its handle for
+/// fifteen seconds: whether any cultist attacked.
+fn run_past(throw: bool, shoot: bool) -> bool {
+    let mut w = playing();
+    w.flashlight.on = false;
+    w.body = Body::at(v3(int(61), 0, int(9)));
+    w.yaw = yaw_of(w.mall.fusebox.sub(w.body.origin));
+    w.pitch = -fx::deg(10);
+    w.tick(&Input::default());
+    if throw {
+        w.tick(&keys(USE));
+        assert!(matches!(w.breaker, Breaker::Thrown(_)));
+    }
+    if shoot {
+        aim_and_shoot_the_box(&mut w);
+    }
+    let path = [v3(int(86), 0, int(9)), v3(int(89), 0, int(1))];
+    let mut attacked = false;
+    let mut leg = 0;
+    while leg < path.len() {
+        let to = path[leg].sub(w.body.origin);
+        if to.len_xz() < ONE / 2 {
+            leg += 1;
+            continue;
+        }
+        w.yaw = yaw_of(to);
+        w.pitch = 0;
+        w.tick(&keys(FORWARD | SPRINT));
+        attacked |= w.cultists.iter().any(|c| c.mind == Mind::Attack);
+        assert!(w.tick < 30 * HZ, "the run got stuck");
+    }
+    for _ in 0..15 * HZ {
+        w.yaw = fx::deg(-90);
+        w.tick(&keys(CROUCH));
+        attacked |= w.cultists.iter().any(|c| c.mind == Mind::Attack);
+    }
+    attacked
+}
+
+fn aim_and_shoot_the_box(w: &mut World) {
+    w.revolver.chambers = [Chamber::Round; 6];
+    let to = w.mall.fusebox.sub(w.eye());
+    w.yaw = yaw_of(to);
+    w.pitch = fx::wrap(fx::atan2(to.y, to.len_xz()));
+    w.tick(&fire_button());
+    assert_eq!(w.breaker, Breaker::Shot);
+}
+
+#[test]
+fn with_the_breaker_thrown_you_can_sprint_past_the_cult_and_turn_the_handle() {
+    // the same sprint, light off and standing, is caught without it: the
+    // footsteps bring them
+    assert!(run_past(false, false));
+    assert!(!run_past(true, false));
+}
+
+#[test]
+fn the_breaker_feeds_the_courts_two_lamps_and_comes_back_on_after_forty_seconds() {
+    let mut w = playing();
+    let feeds = w.mall.breaker_feeds.clone();
+    // the lamps at (68, −8) and (84, −12)
+    let at: Vec<V3> = feeds.iter().map(|&i| w.mall.fixtures[i].at).collect();
+    assert_eq!(
+        at,
+        vec![v3(int(68), int(7), int(-8)), v3(int(84), int(7), int(-12))]
+    );
+    let before: Vec<_> = feeds.iter().map(|&i| w.lights.states[i]).collect();
+    // nobody about to cut the forty seconds short
+    for c in w.cultists.iter_mut() {
+        c.mind = Mind::Dead;
+    }
+    w.body = Body::at(v3(int(61), 0, int(9)));
+    w.yaw = yaw_of(w.mall.fusebox.sub(w.body.origin));
+    w.pitch = -fx::deg(10);
+    w.tick(&Input::default());
+    assert_eq!(w.prompt, "prompt_breaker");
+    w.tick(&keys(USE));
+    let thrown = w.tick;
+    for &i in &feeds {
+        assert_eq!(w.lights.brightness(i, false), 0);
+    }
+    while w.tick < thrown + 40 * HZ - 1 {
+        w.tick(&Input::default());
+    }
+    assert_eq!(w.lights.brightness(feeds[0], false), 0);
+    w.tick(&Input::default());
+    assert_eq!(w.breaker, Breaker::On);
+    let after: Vec<_> = feeds.iter().map(|&i| w.lights.states[i]).collect();
+    assert_eq!(after, before);
+}
+
+#[test]
+fn a_shot_fuse_box_puts_the_court_out_for_good_and_sends_the_cult_to_it() {
+    let mut w = playing();
+    w.body = Body::at(v3(int(61), 0, int(9)));
+    w.tick(&Input::default());
+    aim_and_shoot_the_box(&mut w);
+    for _ in 0..60 * HZ {
+        w.tick(&Input::default());
+    }
+    assert_eq!(w.breaker, Breaker::Shot);
+    for &i in &w.mall.breaker_feeds {
+        assert_eq!(w.lights.brightness(i, false), 0);
+    }
+    // a minute on, they have come from the ring (14 m off) to the box
+    let near_box = w
+        .cultists
+        .iter()
+        .filter(|c| c.at.sub(w.mall.fusebox).len_xz() < int(8))
+        .count();
+    assert!(near_box >= 1, "{near_box}");
+}
+
+// T15: the spirit rises ---------------------------------------------------
+
+#[test]
+fn the_spirit_rises_in_the_far_corner_and_stands_three_seconds() {
+    let mut w = playing();
+    // beside the board, on the side of the old spot (100, −4)
+    w.body = Body::at(v3(ONE * 995 / 10, 0, ONE * -25 / 10));
+    w.tick(&Input::default());
+    w.begin_chase();
+    assert_eq!(w.spirit.at, v3(int(101), 0, int(4)));
+    for _ in 0..3 * HZ {
+        w.tick(&Input::default());
+        assert_eq!(w.spirit.at, v3(int(101), 0, int(4)));
+    }
+    w.tick(&Input::default());
+    assert_ne!(w.spirit.at, v3(int(101), 0, int(4)));
+}
+
+#[test]
+fn from_the_board_you_can_reach_the_court_when_the_spirit_rises() {
+    let mut w = playing();
+    w.flashlight.on = false;
+    w.body = Body::at(v3(ONE * 995 / 10, 0, ONE * -25 / 10));
+    // you came in by the door, so it stands open
+    w.door_open[0] = ONE;
+    let b = w.mall.doors[0].brush;
+    w.mall.map.brushes[b] = mall::open_brush();
+    w.tick(&Input::default());
+    w.begin_chase();
+    let path = [v3(int(95), 0, 0), v3(int(85), 0, 0), v3(int(80), 0, int(10))];
+    for p in path {
+        while p.sub(w.body.origin).len_xz() > ONE / 2 {
+            w.yaw = yaw_of(p.sub(w.body.origin));
+            w.tick(&keys(FORWARD | SPRINT));
+            assert!(
+                w.health > 0,
+                "caught at {} tick {} spirit {},{} door {:?} speed {}",
+                fx::decimal(w.body.origin.x, 1),
+                w.tick,
+                fx::decimal(w.spirit.at.x, 1),
+                fx::decimal(w.spirit.at.z, 1),
+                w.door_open,
+                fx::decimal(w.body.speed(), 2)
+            );
+            assert!(w.tick < 40 * HZ);
+        }
+    }
+}
+
+// T16: darker ----------------------------------------------------------------
+
+#[test]
+fn ten_seconds_in_the_dark_the_eye_brightens_it_by_no_more_than_five_percent() {
+    let mut w = playing();
+    w.flashlight.on = false;
+    // a place no fixture reaches: the night's floor of light, 1/6
+    let dark = (0..60)
+        .map(|k| v3(int(k * 10 - 5), 0, int(17)))
+        .find(|p| w.lit_at(p.add(v3(0, ONE * 16 / 10, 0))) == ONE / 6)
+        .expect("somewhere in the service corridor is dark");
+    w.body = Body::at(dark);
+    for _ in 0..10 * HZ {
+        w.body.origin = dark;
+        w.tick(&Input::default());
+    }
+    // lit 1/6 here: 1.1 − 1/24 = 1.058, held to 1.05
+    assert_eq!(w.exposure, ONE * 105 / 100);
+}
+
+#[test]
+fn a_lamp_draws_half_again_its_power() {
+    let w = playing();
+    let eye = w.mall.fixtures[0].at.add(v3(0, -ONE, 0));
+    let f = w.mall.fixtures[0];
+    let ls = crate::view::lights(&w, eye);
+    let near = ls.iter().find(|l| l.at == f.at).unwrap();
+    // power × 3/2 × red / 255
+    let k = fx::mul(f.power, ONE * 3 / 2);
+    assert!(
+        (near.rgb.x - k * f.rgb[0] / 255).abs() <= 2,
+        "{} {}",
+        near.rgb.x,
+        k * f.rgb[0] / 255
+    );
 }

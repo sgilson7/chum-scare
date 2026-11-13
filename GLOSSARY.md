@@ -20,6 +20,10 @@ The box of rounds in your pocket; taken out with the hand during a reload.
 
 Not: magazine, clip
 
+### Breaker
+
+The handle on the fuse box on the court's west wall. Thrown with E, it puts out the court's lamps until someone throws it back, and the sudden dark leaves the cult blind for a moment. Shot, the box puts them out for good, and the cult hears the shot.
+
 ### Chamber
 
 One of the six holes in the cylinder; each is empty, holds a round, or holds a spent case.

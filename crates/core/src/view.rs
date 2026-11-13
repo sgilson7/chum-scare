@@ -11,7 +11,7 @@ use crate::geom::{facing, v3, Affine, Mat4, V3};
 use crate::lights::State;
 use crate::mall::{self, CurioKind, FixtureKind, PropKind, Slab};
 use crate::world::{
-    chamber_at, Chamber, Mind, Mode, Output, Phase, World, BOX_AT, CYLINDER, LETTERS, POCKET,
+    chamber_at, Breaker, Chamber, Mind, Mode, Output, Phase, World, BOX_AT, CYLINDER, LETTERS, POCKET,
 };
 
 pub const INSTANCE: usize = 17;
@@ -19,6 +19,15 @@ pub const MAX_LIGHTS: usize = 12;
 pub const FOV: i32 = fx::deg(70);
 pub const NEAR: Fx = ONE / 20;
 pub const FAR: Fx = 120 * ONE;
+
+/// T16: the light everything gets with no light near it, before and after
+/// the blackout (were 1/45 and 1/90: the shader's curve made them a grey
+/// floor), the colour distance fades to (was 1/100), and how much brighter
+/// every fixture draws than its power, so lit places stand out
+pub const AMBIENT: Fx = ONE / 250;
+pub const AMBIENT_AFTER: Fx = ONE / 400;
+pub const FOG: Fx = ONE / 600;
+pub const LAMP_GAIN: Fx = ONE * 3 / 2;
 
 fn push(out: &mut Vec<i32>, a: Affine, rgb: [i32; 3], material: i32, glow: Fx) {
     out.extend_from_slice(&[
@@ -796,6 +805,37 @@ pub fn dynamic_boxes(w: &World) -> Vec<i32> {
     if let Some(p) = w.phantom {
         girl(&mut out, p.at, p.yaw);
     }
+    // T14: the fuse box on the court's west wall, its handle up while on;
+    // shot, it hangs open and black
+    let fb = at_yaw(w.mall.fusebox, -fx::QUARTER_TURN);
+    let (metal, glow) = match w.breaker {
+        Breaker::Shot => ([30, 28, 26], 0),
+        _ => ([96, 100, 96], 0),
+    };
+    part(
+        &mut out,
+        &fb,
+        v3(cm(-18), cm(-25), cm(-6)),
+        v3(cm(18), cm(25), cm(6)),
+        metal,
+        mall::METAL,
+        glow,
+    );
+    let (lo, hi) = if w.breaker == Breaker::On {
+        (v3(cm(10), cm(0), cm(-12)), v3(cm(14), cm(16), cm(-6)))
+    } else {
+        (v3(cm(10), cm(-16), cm(-12)), v3(cm(14), cm(0), cm(-6)))
+    };
+    part(&mut out, &fb, lo, hi, [150, 30, 24], mall::PLASTIC, 0);
+    part(
+        &mut out,
+        &fb,
+        v3(cm(-12), cm(12), cm(-7)),
+        v3(cm(-4), cm(16), cm(-6)),
+        [255, 120, 40],
+        mall::GLOW,
+        if w.breaker == Breaker::On { ONE } else { 0 },
+    );
     for d in &w.debris {
         let f = at_yaw(d.at, d.yaw);
         part(
@@ -1151,7 +1191,7 @@ pub fn lights(w: &World, eye: V3) -> Vec<Lit> {
         if b == 0 {
             continue;
         }
-        let k = fx::mul(f.power, b);
+        let k = fx::mul(fx::mul(f.power, b), LAMP_GAIN);
         all.push(Lit {
             at: f.at,
             range: f.range,
@@ -1243,9 +1283,13 @@ pub fn uniforms(w: &World, cam: &Camera) -> Vec<i32> {
     let lv = Mat4::look(from, dir, V3::UP);
     u.extend_from_slice(&lp.mul(&lv).0);
     // ambient and fog: darker after the blackout
-    let amb = if w.blackout.is_some() { ONE / 90 } else { ONE / 45 };
+    let amb = if w.blackout.is_some() {
+        AMBIENT_AFTER
+    } else {
+        AMBIENT
+    };
     u.extend_from_slice(&[amb, amb, fx::mul(amb, ONE * 12 / 10), ONE * 6 / 100]);
-    u.extend_from_slice(&[ONE / 100, ONE / 110, ONE / 100, w.exposure]);
+    u.extend_from_slice(&[FOG, FOG * 10 / 11, FOG, w.exposure]);
     u.extend_from_slice(&[(w.tick as i32) * ONE / 60, 0, 0, w.settings.tier * ONE]);
     u
 }
