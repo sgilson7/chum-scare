@@ -6,7 +6,7 @@ Commit: 2fd1aeb
 
 ## Where the build is
 
-Stage 5 to 8: the first version is built and checked locally; next is the deploy to GitHub Pages (`chum-scare`, CH-Q7 A) and the journal's entries for it. Answers CH-Q1 to CH-Q22 are recorded (all defaults but CH-Q8 B, T1; CH-Q12 note, T2).
+Stage 8 done: the first version is live at https://sgilson7.github.io/chum-scare/ (gh-pages built from 87c9ab4), checked live in three engines; journal page 7 and Live now record it, republished to the artifact. Answers CH-Q1 to CH-Q22 are recorded (all defaults but CH-Q8 B, T1; CH-Q12 note, T2).
 
 ## Decisions in force
 
@@ -17,9 +17,8 @@ Stage 5 to 8: the first version is built and checked locally; next is the deploy
 
 ## What is next
 
-1. Deploy: `gh repo create chum-scare --public`, push, `./scripts/publish.sh`, browser check against the live address.
-2. Journal: agreed entry (CH-Q1 to CH-Q22), divergences (R2.4, R3.4), screenshots, live entry; republish the artifact.
-3. Then the person plays and triages.
+1. The person plays the live build and triages; each request becomes a TRIAGE row (T3 on).
+2. Open: R2.6 (hand is one Verlet point), R3.4 (dust motes, bounce light); person rows R1.6, R1.11.
 
 ## Cards the next session needs
 
