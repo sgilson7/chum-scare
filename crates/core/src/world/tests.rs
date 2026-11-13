@@ -1528,6 +1528,10 @@ fn the_spirit_follows_you_out_through_every_doorway() {
     w.body = Body::at(v3(int(97), 0, 0));
     w.tick(&Input::default());
     w.begin_chase();
+    // the way alone: no cultist to stop for
+    for c in w.cultists.iter_mut() {
+        c.mind = Mind::Dead;
+    }
     // carried along the way out at 3 m/s, kept alive to watch it
     let path = [
         v3(int(97), 0, 0),
@@ -1564,6 +1568,10 @@ fn the_spirit_stares_then_screams_then_comes_slowly_and_faster() {
     w.body = Body::at(v3(int(97), 0, 0));
     w.tick(&Input::default());
     w.begin_chase();
+    // its pace alone: no cultist to stop for
+    for c in w.cultists.iter_mut() {
+        c.mind = Mind::Dead;
+    }
     let rose = w.spirit.at;
     let mut screamed = None;
     for t in 1..=RISE_TICKS + 1 {
@@ -1574,7 +1582,7 @@ fn the_spirit_stares_then_screams_then_comes_slowly_and_faster() {
         }
     }
     assert_eq!(screamed, Some(RISE_TICKS + 1));
-    // its first second: about 1 m/s (1.0 rising to 1.13)
+    // its first second: about 1 m/s (1.0 rising to 1.05)
     let a = w.spirit.at;
     for _ in 0..HZ {
         w.body.origin = v3(int(60), 0, int(10));
@@ -1586,7 +1594,7 @@ fn the_spirit_stares_then_screams_then_comes_slowly_and_faster() {
         "{}",
         fx::decimal(first, 2)
     );
-    // twenty seconds on: 3.6 m/s (kept on your trail, not searching)
+    // thirty seconds on: 2.6 m/s (T23; kept on your trail, not searching)
     while w.spirit.chase_ticks < RISE_TICKS + SPEED_RAMP {
         w.body.origin = v3(int(30), 0, 0);
         w.spirit.unseen = 0;
@@ -1598,7 +1606,7 @@ fn the_spirit_stares_then_screams_then_comes_slowly_and_faster() {
     w.spirit.unseen = 0;
     w.tick(&Input::default());
     let pace = w.spirit.at.sub(b).len_xz() * HZ as i32;
-    assert!(near(pace, ONE * 36 / 10, ONE / 10), "{}", fx::decimal(pace, 2));
+    assert!(near(pace, ONE * 26 / 10, ONE / 10), "{}", fx::decimal(pace, 2));
     assert_ne!(rose, w.spirit.at);
 }
 
@@ -1653,6 +1661,10 @@ fn the_spirit_never_stalls_on_four_ways_out_through_wings_and_stores() {
         w.body = Body::at(v3(int(97), 0, 0));
         w.tick(&Input::default());
         w.begin_chase();
+        // the way alone: no cultist to stop for
+        for c in w.cultists.iter_mut() {
+            c.mind = Mind::Dead;
+        }
         let mut window = std::collections::VecDeque::new();
         for leg in route.windows(2) {
             let a = v3(int(leg[0].0), 0, int(leg[0].1));
@@ -1721,4 +1733,83 @@ fn past_the_doors_the_director_scares_you_loaded_or_not() {
         assert!(t < 60 * HZ as i32, "no scare in a minute");
     }
     assert!(!w.armed);
+}
+
+#[test]
+fn the_spirit_turns_to_a_fleeing_cultist_nearer_than_you_and_feeds() {
+    // T23: you 12 m off and in plain sight; a cultist fleeing 6 m off: it
+    // goes for the cultist, catches it, and stays four seconds over it
+    let mut w = playing();
+    w.body = Body::at(v3(int(75), 0, int(12)));
+    w.tick(&Input::default());
+    w.begin_chase();
+    w.spirit.chase_ticks = RISE_TICKS + SPEED_RAMP;
+    w.spirit.at = v3(int(75), 0, 0);
+    for (i, c) in w.cultists.iter_mut().enumerate() {
+        c.mind = if i == 0 { Mind::Flee } else { Mind::Dead };
+        c.at = v3(int(69), 0, 0);
+    }
+    let mut ate = None;
+    for t in 0..10 * HZ as i32 {
+        w.body.origin = v3(int(75), 0, int(12));
+        w.cultists[0].at = v3(int(69), 0, 0);
+        w.tick(&Input::default());
+        if t == 0 {
+            assert_eq!(w.spirit.prey, Some(0));
+        }
+        if w.cultists[0].mind == Mind::Dead {
+            ate = Some(w.spirit.at);
+            break;
+        }
+    }
+    let at = ate.expect("it caught the cultist");
+    for _ in 0..FEED_TICKS - 1 {
+        w.body.origin = v3(int(75), 0, int(12));
+        w.tick(&Input::default());
+        assert_eq!(w.spirit.at, at);
+    }
+    w.tick(&Input::default());
+    w.tick(&Input::default());
+    assert_ne!(w.spirit.at, at);
+}
+
+#[test]
+fn near_you_the_spirit_ignores_the_cultists() {
+    let mut w = playing();
+    w.body = Body::at(v3(int(75), 0, int(4)));
+    w.tick(&Input::default());
+    w.begin_chase();
+    w.spirit.chase_ticks = RISE_TICKS + SPEED_RAMP;
+    w.spirit.at = v3(int(75), 0, 0);
+    for (i, c) in w.cultists.iter_mut().enumerate() {
+        c.mind = if i == 0 { Mind::Flee } else { Mind::Dead };
+        c.at = v3(int(72), 0, 0);
+    }
+    w.body.origin = v3(int(75), 0, int(4));
+    w.cultists[0].at = v3(int(72), 0, 0);
+    w.tick(&Input::default());
+    // you at 4 m, under PREY_UNLESS_NEAR's 5
+    assert_eq!(w.spirit.prey, None);
+}
+
+#[test]
+fn where_it_last_saw_you_the_spirit_takes_up_your_trail() {
+    // T19: at the spot it last saw you, two seconds unseen, you out of
+    // sight in the wing: it heads for where you are now, unless you hide
+    let mut w = playing();
+    w.flashlight.on = false;
+    w.body = Body::at(v3(int(30), 0, 0));
+    w.tick(&Input::default());
+    w.begin_chase();
+    for c in w.cultists.iter_mut() {
+        c.mind = Mind::Dead;
+    }
+    w.spirit.chase_ticks = RISE_TICKS + SPEED_RAMP;
+    w.spirit.at = v3(int(80), 0, int(12));
+    w.spirit.last_known = w.spirit.at;
+    w.spirit.unseen = 2 * HZ as i32;
+    w.body.origin = v3(int(30), 0, 0);
+    w.tick(&Input::default());
+    let k = w.spirit.last_known;
+    assert_eq!((k.x, k.z), (int(30), 0));
 }

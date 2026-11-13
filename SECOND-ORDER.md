@@ -68,6 +68,7 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R11.3 | divergence | T20: darker | Numbers chosen, not measured on a screen | Ambient 1/700, fog 1/2000, no brightening of the dark; yours to judge (R9.6) | `view::AMBIENT`, `FOG`; `world::EXPOSURE_DARK` | done |
 | R11.4 | finding | T19 fixed the stuck spirit | My route test carried you only by the wing; the spirit's way of choosing doorways (by where your sound seemed to come from) can lead it into a doorway that goes nowhere | Rewritten to the fewest rooms; tested on four ways out through stores | `World::next_waypoint`; `the_spirit_never_stalls_…`, `the_spirit_takes_the_fewest_rooms` | done |
 | R11.5 | divergence | T22 names "the electricity" | Two beds could be it: the air-handling hum (a slow wobble) and the lamps' buzz (a fast one) | Both softened and made irregular; the cult's chant is unchanged. No test hears sound: yours to judge | `data/sounds.json` beds; `web/audio.js` | person |
+| R11.6 | divergence | T23 gives no numbers | Chosen: top pace 2.6 m/s (between a walk's 1.3 and a sprint's 4.0, so a sprint with breath left gains on it), 30 s to reach it, a cultist preferred unless you are within 5 m, 4 s over each | `world::HUNT_TOP`, `SPEED_RAMP`, `PREY_UNLESS_NEAR`, `FEED_TICKS` | done |
 
 ## Strings written by the agent
 

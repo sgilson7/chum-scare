@@ -284,7 +284,7 @@
     "file": "crates/core/src/world.rs",
     "find": "            self.spirit.last_known = me;\n        }",
     "replace": "        }",
-    "test": "the_spirit_follows_you_out_through_every_doorway"
+    "test": "where_it_last_saw_you_the_spirit_takes_up_your_trail"
   },
   {
     "name": "the spirit screams when it comes (T19)",
@@ -376,5 +376,33 @@
     "find": "        if !(self.armed || menace >= 1) || self.scare_wait > 0 || self.spirit.chasing {",
     "replace": "        if !self.armed || self.scare_wait > 0 || self.spirit.chasing {",
     "test": "past_the_doors_the_director_scares_you_loaded_or_not"
+  },
+  {
+    "name": "the spirit turns to a nearer fleeing cultist (T23)",
+    "file": "crates/core/src/world.rs",
+    "find": "        if you > PREY_UNLESS_NEAR {\n            let mut best = you.min(int(30));",
+    "replace": "        if false {\n            let mut best = you.min(int(30));",
+    "test": "the_spirit_turns_to_a_fleeing_cultist_nearer_than_you_and_feeds"
+  },
+  {
+    "name": "the spirit feeds on a caught cultist (T23)",
+    "file": "crates/core/src/world.rs",
+    "find": "                self.spirit.feeding = FEED_TICKS;",
+    "replace": "",
+    "test": "the_spirit_turns_to_a_fleeing_cultist_nearer_than_you_and_feeds"
+  },
+  {
+    "name": "near you it ignores the cultists (T23)",
+    "file": "crates/core/src/world.rs",
+    "find": "pub const PREY_UNLESS_NEAR: Fx = 5 * ONE;",
+    "replace": "pub const PREY_UNLESS_NEAR: Fx = 0;",
+    "test": "near_you_the_spirit_ignores_the_cultists"
+  },
+  {
+    "name": "the spirit's top pace is under a sprint (T23)",
+    "file": "crates/core/src/world.rs",
+    "find": "pub const HUNT_TOP: Fx = ONE * 26 / 10;",
+    "replace": "pub const HUNT_TOP: Fx = ONE * 36 / 10;",
+    "test": "the_spirit_stares_then_screams_then_comes_slowly_and_faster"
   }
 ]

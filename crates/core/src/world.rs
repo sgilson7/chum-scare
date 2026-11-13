@@ -145,6 +145,8 @@ pub struct Spirit {
     pub unseen: i32,
     pub last_known: V3,
     pub prey: Option<usize>,
+    /// T23: ticks it stays over a cultist it has caught
+    pub feeding: i32,
     pub glimpse: i32,
     pub chase_ticks: i32,
 }
@@ -446,6 +448,7 @@ impl World {
                 unseen: 0,
                 last_known: V3::ZERO,
                 prey: None,
+                feeding: 0,
                 glimpse: 0,
                 chase_ticks: 0,
             },
@@ -2248,14 +2251,17 @@ impl World {
             s.last_known = me;
             s.prey = None;
         }
-        // a screaming cultist nearer than where it thinks you are draws it
-        let mut prey = s.prey;
-        if s.unseen > HZ as i32 {
-            let mut best = s.last_known.sub(s.at).len_xz();
+        // T23: a screaming cultist nearer than you draws it, seen or not,
+        // unless you are close (it used to turn to them only once it had
+        // lost sight of you for a second)
+        let mut prey = None;
+        let you = me.sub(s.at).len_xz();
+        if you > PREY_UNLESS_NEAR {
+            let mut best = you.min(int(30));
             for (i, c) in self.cultists.iter().enumerate() {
                 if c.mind == Mind::Flee {
                     let d = c.at.sub(s.at).len_xz();
-                    if d < best && d < int(30) {
+                    if d < best {
                         best = d;
                         prey = Some(i);
                     }
@@ -2276,7 +2282,15 @@ impl World {
         // T19: slow at first, at full pace after SPEED_RAMP
         let since = s.chase_ticks - RISE_TICKS;
         let hunt = HUNT_FROM + (HUNT_TOP - HUNT_FROM) * since.min(SPEED_RAMP) / SPEED_RAMP;
-        let speed = if lost { ONE * 12 / 10 } else { hunt };
+        // T23: still while it feeds on a cultist
+        let speed = if s.feeding > 0 {
+            s.feeding -= 1;
+            0
+        } else if lost {
+            ONE * 12 / 10
+        } else {
+            hunt
+        };
         if l > ONE / 4 {
             let step = speed / HZ as i32;
             s.at = s.at.add(v3(
@@ -2304,6 +2318,7 @@ impl World {
                 let at = self.cultists[i].at.add(v3(0, ONE, 0));
                 self.say("scream_cut", at, ONE, Some("sub_scream"));
                 self.spirit.prey = None;
+                self.spirit.feeding = FEED_TICKS;
             }
         }
         let reach = self.spirit.size / 3 + ONE / 2;
@@ -2494,8 +2509,13 @@ pub const RISE_TICKS: i32 = 3 * HZ as i32;
 /// T19: its pace when it starts to come and at full hunt, the ticks
 /// between, and the ticks it takes to grow to full size
 pub const HUNT_FROM: Fx = ONE;
-pub const HUNT_TOP: Fx = ONE * 36 / 10;
-pub const SPEED_RAMP: i32 = 20 * HZ as i32;
+pub const HUNT_TOP: Fx = ONE * 26 / 10;
+pub const SPEED_RAMP: i32 = 30 * HZ as i32;
+/// T23 (were 3.6 m/s after 20 s): below a sprint (4.0), above a walk;
+/// it turns from you to a cultist nearer than you unless you are within
+/// this, and stays over one it caught this long
+pub const PREY_UNLESS_NEAR: Fx = 5 * ONE;
+pub const FEED_TICKS: i32 = 4 * HZ as i32;
 pub const GROW_TICKS: i32 = 90 * HZ as i32;
 
 /// T16: the most the eye brightens the dark
