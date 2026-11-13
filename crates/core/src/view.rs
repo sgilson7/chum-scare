@@ -11,7 +11,7 @@ use crate::geom::{facing, v3, Affine, Mat4, V3};
 use crate::lights::State;
 use crate::mall::{self, CurioKind, FixtureKind, PropKind, Slab};
 use crate::world::{
-    chamber_at, Breaker, Chamber, Mind, Mode, Output, Phase, World, BOX_AT, CYLINDER, LETTERS, POCKET,
+    chamber_at, Breaker, Chamber, Mind, Mode, Output, Phase, Sight, World, BOX_AT, CYLINDER, LETTERS, POCKET,
 };
 
 pub const INSTANCE: usize = 17;
@@ -544,6 +544,94 @@ fn girl(out: &mut Vec<i32>, p: V3, yaw: i32) {
     );
 }
 
+/// T18: an apparition, facing `toward` (local −z faces you). Each glows a
+/// little, so the dark does not hide it; it dims as it goes.
+fn apparition(out: &mut Vec<i32>, a: &crate::world::Apparition, toward: i32) {
+    let f = at_yaw(a.at, toward);
+    let dim = if a.fading > 0 {
+        a.fading * ONE / crate::world::FADE_TICKS
+    } else {
+        ONE
+    };
+    match a.kind {
+        Sight::Eyes => {
+            for x in [-7, 3] {
+                part(
+                    out,
+                    &f,
+                    v3(cm(x), cm(-1), cm(-1)),
+                    v3(cm(x + 4), cm(1), 0),
+                    [235, 228, 200],
+                    mall::GLOW,
+                    dim,
+                );
+                part(
+                    out,
+                    &f,
+                    v3(cm(x + 1), cm(-1), cm(-2)),
+                    v3(cm(x + 3), cm(1), cm(-1)),
+                    [8, 6, 6],
+                    mall::GLASS,
+                    0,
+                );
+            }
+        }
+        Sight::Smile => {
+            // eleven teeth along a wide upturned curve, a black gap behind
+            part(
+                out,
+                &f,
+                v3(cm(-17), cm(-4), 0),
+                v3(cm(17), cm(5), cm(1)),
+                [6, 4, 4],
+                mall::FABRIC,
+                0,
+            );
+            for k in -5..=5 {
+                let x = k * 3;
+                let lift = k * k * cm(1) / 6;
+                part(
+                    out,
+                    &f,
+                    v3(cm(x) - cm(1), lift - cm(3), cm(-1)),
+                    v3(cm(x) + cm(1), lift + cm(3), 0),
+                    [228, 222, 200],
+                    mall::GLOW,
+                    dim * 6 / 10,
+                );
+            }
+        }
+        Sight::Hands => {
+            // two long pale arms that reach farther as it waits
+            let reach = cm(30) + (a.age.min(240) * cm(40) / 240);
+            let skin = [196, 190, 178];
+            for x in [-18, 12] {
+                part(
+                    out,
+                    &f,
+                    v3(cm(x), cm(-3), cm(20) - reach),
+                    v3(cm(x + 6), cm(3), cm(20)),
+                    skin,
+                    mall::PLASTIC,
+                    dim / 3,
+                );
+                for k in 0..4 {
+                    let fx_ = x + k * 2 - 1;
+                    part(
+                        out,
+                        &f,
+                        v3(cm(fx_), cm(-1), cm(10) - reach),
+                        v3(cm(fx_) + cm(1), cm(1), cm(20) - reach),
+                        skin,
+                        mall::PLASTIC,
+                        dim / 3,
+                    );
+                }
+            }
+        }
+    }
+}
+
 /// What moves or changes: doors, props, cultists, the spirit, debris.
 pub fn dynamic_boxes(w: &World) -> Vec<i32> {
     let mut out = Vec::new();
@@ -804,6 +892,9 @@ pub fn dynamic_boxes(w: &World) -> Vec<i32> {
     }
     if let Some(p) = w.phantom {
         girl(&mut out, p.at, p.yaw);
+    }
+    if let Some(a) = w.apparition {
+        apparition(&mut out, &a, crate::geom::yaw_of(w.eye().sub(a.at)));
     }
     // T14: the fuse box on the court's west wall, its handle up while on;
     // shot, it hangs open and black
@@ -1393,7 +1484,16 @@ pub struct Bed {
 
 pub fn beds(w: &World, cam: &Camera) -> Vec<Bed> {
     let mut out = Vec::new();
+    // T17: hushed after a scare, coming back over three seconds
+    let hush = if w.hush > 0 {
+        crate::world::HUSH_FLOOR
+            + (ONE - crate::world::HUSH_FLOOR) * (crate::world::HUSH_TICKS - w.hush)
+                / crate::world::HUSH_TICKS
+    } else {
+        ONE
+    };
     let mut place = |id: &'static str, recipe: &'static str, at: V3, loud: Fx| {
+        let loud = fx::mul(loud, hush);
         let h = w.hear(at, cam.eye);
         out.push(Bed {
             id,

@@ -60,6 +60,9 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R9.4 | finding | T14: placing the box | The candles at the ring and the moon are not on the breaker, so the ring stays lit and the court is moonlit | Only the court's two lamps are fed (`breaker_feeds`); the box is 14 m from the nearest walker | `mall::fusebox` | done |
 | R9.5 | finding | T15: the second report reads as the spirit stuck on the store's doorway | A doorway fix passed its test with or without the fix: traced from four places in the court, the spirit always leaves the store. Read as being caught at the door, the same cause as the first report | Doorway fix reverted; the far corner and the 3 s rise fix both reports | `World::begin_chase`, `RISE_TICKS` | done |
 | R9.6 | divergence | T16 asks for darker dark and brighter lamps | Only what you see changes; the cult's sight still uses `lit_at`, so sneaking is as it was. The numbers are first guesses for you to judge by eye | Ambient, fog, adaptation and lamp gain in `view.rs` and `world.rs` | `view::AMBIENT`, `FOG`, `LAMP_GAIN`; `world::EXPOSURE_DARK` | person |
+| R10.1 | divergence | T17: "too often" for the footsteps | Your next message kept them | Of six footstep points two became knocks; the two I first turned into whispers are footsteps again, and two whisper points are new. The director already spreads kinds evenly (CH-Q23), so more kinds means fewer footsteps | `mall.rs` scares | done |
+| R10.2 | divergence | T18: "a smiling mouth, a pair of eyes, hands reaching towards you" | They need to be seen in the dark | They glow faintly; they stand where the eye can see them and clear of walls; they move only while off the screen. Stand-in boxes, to the Blender list (R1.6) | `World::apparitions`, `view::apparition` | done |
+| R10.3 | finding | R9.5 said the spirit leaves the store fine | It does when you are in the court; my test never put you two rooms on. Then it sat on the doorway, as you saw. The doorway fix I reverted was right | Doorway fix back, with a test that carries you out through the wing; and it follows your trail where it last saw you | `World::next_waypoint`; `the_spirit_follows_you_out_through_every_doorway` | done |
 
 ## Strings written by the agent
 
@@ -90,3 +93,6 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `sub_music` | A music box plays |
 | `prompt_breaker` | E: throw the breaker. The court goes dark. |
 | `sub_breaker` | A breaker clunks back on |
+| `sub_knock_wall` | Three knocks on a wall |
+| `sub_whisper` | A whisper |
+| `sub_spirit_scream` | It screams, and comes |

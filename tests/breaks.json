@@ -114,15 +114,15 @@
   {
     "name": "glimpses vary inside the screen (CH-Q25)",
     "file": "crates/core/src/world.rs",
-    "find": "let off = GLIMPSE_NEAR + self.rng.below((GLIMPSE_FAR - GLIMPSE_NEAR) as u32) as i32;",
-    "replace": "let off = fx::deg(55);",
+    "find": "                // again for 20 s\n                let off = GLIMPSE_NEAR + self.rng.below((GLIMPSE_FAR - GLIMPSE_NEAR) as u32) as i32;",
+    "replace": "                // again for 20 s\n                let off = fx::deg(55);",
     "test": "glimpses_fall_where_the_screen_shows_them_and_twenty_seconds_apart"
   },
   {
     "name": "glimpses 20 s apart (CH-Q25)",
     "file": "crates/core/src/world.rs",
-    "find": "self.glimpse_wait = 20 * HZ as i32;",
-    "replace": "self.glimpse_wait = 0;",
+    "find": "self.spirit_wait = 20 * HZ as i32;",
+    "replace": "self.spirit_wait = 0;",
     "test": "glimpses_fall_where_the_screen_shows_them_and_twenty_seconds_apart"
   },
   {
@@ -292,5 +292,89 @@
     "find": "pub const LAMP_GAIN: Fx = ONE * 3 / 2;",
     "replace": "pub const LAMP_GAIN: Fx = ONE;",
     "test": "a_lamp_draws_half_again_its_power"
+  },
+  {
+    "name": "the spirit leaves the doorway it stands on (T19)",
+    "file": "crates/core/src/world.rs",
+    "find": "            if p.at.sub(from).len_xz() < ONE / 2 {\n                continue;\n            }",
+    "replace": "",
+    "test": "the_spirit_follows_you_out_through_every_doorway"
+  },
+  {
+    "name": "the spirit follows your trail (T19)",
+    "file": "crates/core/src/world.rs",
+    "find": "            self.spirit.last_known = me;\n        }",
+    "replace": "        }",
+    "test": "the_spirit_follows_you_out_through_every_doorway"
+  },
+  {
+    "name": "the spirit screams when it comes (T19)",
+    "file": "crates/core/src/world.rs",
+    "find": "            self.say(\"spirit_scream\", at, ONE, Some(\"sub_spirit_scream\"));",
+    "replace": "",
+    "test": "the_spirit_stares_then_screams_then_comes_slowly_and_faster"
+  },
+  {
+    "name": "the spirit starts slow (T19)",
+    "file": "crates/core/src/world.rs",
+    "find": "pub const HUNT_FROM: Fx = ONE;",
+    "replace": "pub const HUNT_FROM: Fx = ONE * 36 / 10;",
+    "test": "the_spirit_stares_then_screams_then_comes_slowly_and_faster"
+  },
+  {
+    "name": "a scare hushes the room (T17)",
+    "file": "crates/core/src/view.rs",
+    "find": "        let loud = fx::mul(loud, hush);",
+    "replace": "",
+    "test": "a_scare_hushes_the_room_and_a_low_swell_comes_up_under_it"
+  },
+  {
+    "name": "a scare swells beneath (T17)",
+    "file": "crates/core/src/world.rs",
+    "find": "        self.say_head(\"dread\", v3(0, -ONE / 2, 0), ONE * 5 / 10);",
+    "replace": "",
+    "test": "a_scare_hushes_the_room_and_a_low_swell_comes_up_under_it"
+  },
+  {
+    "name": "the stranger's steps come nearer (T17)",
+    "file": "crates/core/src/world.rs",
+    "find": "                    let along = fx::div(ONE * 7 / 10 * k, l);",
+    "replace": "                    let along = 0 * l;",
+    "test": "footsteps_not_yours_are_slow_heavy_and_come_nearer"
+  },
+  {
+    "name": "the stranger's steps have their own sound (T17)",
+    "file": "crates/core/src/world.rs",
+    "find": "            self.say(\"step_stranger\", p, ONE * 7 / 10, None);",
+    "replace": "            self.say(\"step_other\", p, ONE * 7 / 10, None);",
+    "test": "footsteps_not_yours_are_slow_heavy_and_come_nearer"
+  },
+  {
+    "name": "your own steps at half (T17)",
+    "file": "crates/core/src/world.rs",
+    "find": "loud / 2);",
+    "replace": "loud);",
+    "test": "your_own_steps_sound_at_half_what_the_cult_hears"
+  },
+  {
+    "name": "an apparition goes when looked at (T18)",
+    "file": "crates/core/src/world.rs",
+    "find": "            if off < LOOKED_AT || near || a.age > APPARITION_LIFE {",
+    "replace": "            if near || a.age > APPARITION_LIFE {",
+    "test": "an_apparition_waits_at_the_edge_of_the_view_until_you_look_at_it"
+  },
+  {
+    "name": "an apparition keeps to the edge as you turn (T18)",
+    "file": "crates/core/src/world.rs",
+    "find": "                if let Some(at) = self.apparition_spot(a.kind, a.side, a.dist) {\n                    a.at = at;\n                }",
+    "replace": "",
+    "test": "an_apparition_waits_at_the_edge_of_the_view_until_you_look_at_it"
+  },
+  {
+    "name": "an apparition stays clear of walls (T18)",
+    "file": "crates/core/src/world.rs",
+    "find": "            if !t.start_solid && !t.hit() && self.clear_line(eye, at) {",
+    "replace": "            if self.clear_line(eye, at) {",
+    "test": "an_apparition_never_hangs_inside_a_wall"
   }
 ]

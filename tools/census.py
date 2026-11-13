@@ -42,9 +42,12 @@ NAMES = {
     "shutter": "a shutter rattles",
     "laugh": "a laugh",
     "step_other": "footsteps",
+    "step_stranger": "footsteps",
     "breath": "breath on the neck",
     "pop_glass": "a light bursts",
     "steps": "footsteps",
+    "knock": "three knocks",
+    "whisper": "a whisper",
 }
 
 
@@ -71,10 +74,10 @@ def summarise(runs, player):
             if e["what"] != "scare":
                 continue
             kind = next(
-                (x["what"] for x in ev[i + 1 : i + 6] + ev[max(0, i - 5) : i] if x["t"] == e["t"] and x["source"] == "director" and x["sense"] == "sound"),
+                (x["what"] for x in ev[i + 1 : i + 6] + ev[max(0, i - 5) : i] if x["t"] == e["t"] and x["source"] == "director" and x["sense"] == "sound" and x["what"] != "dread"),
                 "steps",
             )
-            scares.append({**e, "kind": "steps" if kind == "step_other" else kind, "seed": r["seed"]})
+            scares.append({**e, "kind": "steps" if kind in ("step_other", "step_stranger") else kind, "seed": r["seed"]})
     gaps = []
     firsts = []
     for r in R:

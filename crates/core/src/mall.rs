@@ -145,10 +145,14 @@ pub enum ScareKind {
     Steps,
     Laugh,
     Glass,
+    /// T17: three knocks on a wall
+    Knock,
+    /// T17: a whisper
+    Whisper,
 }
 
 impl ScareKind {
-    pub const COUNT: usize = 6;
+    pub const COUNT: usize = 8;
 
     pub fn index(self) -> usize {
         self as usize
@@ -745,12 +749,12 @@ pub fn mall() -> Mall {
         s(ScareKind::DoorCreak, -60, 50, 0),
         s(ScareKind::Fall, 100, 120, 0),
         s(ScareKind::Fall, 160, -30, 0),
-        s(ScareKind::Steps, 60, 0, 1),
+        s(ScareKind::Knock, 60, 50, 1),
         s(ScareKind::Steps, 200, 0, 1),
         // CH-Q26 A: three quiet ones in the wings
         s(ScareKind::Shutter, 150, -50, 1),
         s(ScareKind::DoorCreak, 270, 50, 1),
-        s(ScareKind::Steps, 290, -30, 1),
+        s(ScareKind::Knock, 290, -50, 1),
         s(ScareKind::Shutter, 240, 50, 1),
         s(ScareKind::Shutter, 380, -50, 1),
         s(ScareKind::Fall, 240, 120, 1),
@@ -758,9 +762,11 @@ pub fn mall() -> Mall {
         s(ScareKind::Glass, 380, -110, 2),
         s(ScareKind::Fall, 380, 120, 2),
         s(ScareKind::Steps, 450, 0, 2),
+        s(ScareKind::Whisper, 350, 30, 2),
         s(ScareKind::DoorCreak, 520, 150, 2),
         s(ScareKind::Laugh, 520, -100, 3),
         s(ScareKind::Steps, 650, 100, 3),
+        s(ScareKind::Whisper, 620, -60, 3),
         s(ScareKind::Fall, 700, -120, 3),
         s(ScareKind::Glass, 950, -40, 4),
         s(ScareKind::Steps, 940, 30, 4),

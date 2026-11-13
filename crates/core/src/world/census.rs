@@ -292,6 +292,7 @@ impl World {
 /// What the census compares across a tick.
 struct Seen {
     glimpse: i32,
+    apparition: bool,
     props: Vec<(V3, i32)>,
     possessed: Option<usize>,
     broken: usize,
@@ -302,6 +303,7 @@ impl Seen {
     fn before(w: &World) -> Seen {
         Seen {
             glimpse: w.spirit.glimpse,
+            apparition: w.apparition.is_some(),
             props: w.mall.props.iter().map(|p| (p.at, p.yaw)).collect(),
             possessed: w.possessed,
             broken: w
@@ -356,7 +358,7 @@ impl Seen {
         if w.last_scare != self.last_scare {
             note("director", "scare", "decision", None, Some(0));
         }
-        if w.spirit.glimpse == 20 && self.glimpse != 20 {
+        if w.spirit.glimpse == GLIMPSE_TICKS && self.glimpse != GLIMPSE_TICKS {
             note(
                 "spirit",
                 "glimpse",
@@ -364,6 +366,9 @@ impl Seen {
                 Some(w.spirit.at.add(v3(0, ONE, 0))),
                 None,
             );
+        }
+        if let (Some(a), false) = (w.apparition, self.apparition) {
+            note("apparition", "apparition", "sight", Some(a.at), None);
         }
         for (i, p) in w.mall.props.iter().enumerate() {
             let (was_at, was_yaw) = self.props[i];

@@ -716,7 +716,7 @@ fn glimpses_fall_where_the_screen_shows_them_and_twenty_seconds_apart() {
     for _ in 0..60 * 60 * HZ {
         w.tick += 1;
         w.chase();
-        if w.spirit.glimpse == 20 {
+        if w.spirit.glimpse == GLIMPSE_TICKS {
             let to = w.spirit.at.sub(w.body.origin);
             let off = fx::wrap(yaw_of(to) - w.yaw).abs();
             assert!(
@@ -1353,4 +1353,245 @@ fn a_lamp_draws_half_again_its_power() {
         near.rgb.x,
         k * f.rgb[0] / 255
     );
+}
+
+// T17: scares set apart from the mall's sounds --------------------------------
+
+/// Fire the director once in the wing at (20, 0), loading; `steps_first`
+/// makes the footsteps the least used kind.
+fn one_scare(steps_first: bool) -> World {
+    let mut w = playing();
+    // the wing at (30, 0): the footsteps at (20, 0) are 10 m off
+    w.body.origin = v3(int(30), 0, 0);
+    w.armed = true;
+    w.pitch = fx::deg(-60);
+    if steps_first {
+        w.kinds_used = [9; mall::ScareKind::COUNT];
+        w.kinds_used[mall::ScareKind::Steps.index()] = 0;
+    }
+    for t in 0..40_000 {
+        w.mode = Mode::Reload;
+        w.last_scare = i64::MIN / 2;
+        w.yaw = fx::deg((t * 7) % 360);
+        w.voices.clear();
+        w.director();
+        if w.last_scare == w.tick {
+            return w;
+        }
+    }
+    panic!("no scare");
+}
+
+#[test]
+fn a_scare_hushes_the_room_and_a_low_swell_comes_up_under_it() {
+    let w = one_scare(false);
+    assert!(w.voices.iter().any(|v| v.recipe == "dread" && v.head));
+    assert_eq!(w.hush, HUSH_TICKS);
+    let cam = crate::view::camera(&w, ONE * 16 / 9, 0, 0);
+    let hushed: i32 = crate::view::beds(&w, &cam).iter().map(|b| b.gain).sum();
+    let mut calm = w.clone();
+    calm.hush = 0;
+    let full: i32 = crate::view::beds(&calm, &cam).iter().map(|b| b.gain).sum();
+    // at its deepest the room is at 15%
+    assert!(full > 0);
+    assert!(hushed * 100 <= full * 16, "{hushed} of {full}");
+}
+
+#[test]
+fn footsteps_not_yours_are_slow_heavy_and_come_nearer() {
+    let mut w = one_scare(true);
+    assert_eq!(w.last_kind, Some(mall::ScareKind::Steps));
+    let steps = w.pending_steps.clone();
+    assert_eq!(steps.len(), 4);
+    // 39 ticks apart, each nearer the player
+    for pair in steps.windows(2) {
+        assert_eq!(pair[1].0 - pair[0].0, 39);
+        let eye = w.eye();
+        assert!(pair[1].1.sub(eye).len_xz() < pair[0].1.sub(eye).len_xz());
+    }
+    w.tick = steps[0].0 - 1;
+    w.voices.clear();
+    w.tick += 1;
+    w.steps_due();
+    assert!(w.voices.iter().any(|v| v.recipe == "step_stranger"));
+}
+
+#[test]
+fn your_own_steps_sound_at_half_what_the_cult_hears() {
+    let mut w = playing();
+    w.body = Body::at(v3(int(20), 0, 0));
+    let mut loud = Vec::new();
+    for _ in 0..120 {
+        w.tick(&keys(FORWARD));
+        loud.extend(
+            w.voices
+                .iter()
+                .filter(|v| v.recipe.starts_with("step_t"))
+                .map(|v| v.loud),
+        );
+    }
+    // a walk is 0.6 to the cult, 0.3 to you
+    assert!(!loud.is_empty());
+    assert!(loud.iter().all(|l| *l == ONE * 30 / 100), "{loud:?}");
+}
+
+// T18: apparitions -------------------------------------------------------------
+
+#[test]
+fn an_apparition_waits_at_the_edge_of_the_view_until_you_look_at_it() {
+    let mut w = playing();
+    w.body.origin = v3(int(75), 0, int(10));
+    w.yaw = fx::deg(-90);
+    let mut waited = 0;
+    while w.apparition.is_none() {
+        w.tick += 1;
+        w.chase();
+        waited += 1;
+        assert!(waited < 120 * HZ, "none came");
+    }
+    let a = w.apparition.unwrap();
+    let off = w.off_view(a.at);
+    assert!(
+        off >= fx::deg(30) && off <= fx::deg(51),
+        "{}",
+        off * 360 / fx::TURN
+    );
+    // ten seconds not looked at: still there, where it was
+    for _ in 0..10 * HZ {
+        w.tick += 1;
+        w.chase();
+    }
+    assert_eq!(w.apparition.map(|b| (b.at, b.fading)), Some((a.at, 0)));
+    // turn away from it: it is back at the edge of the screen on its side
+    w.yaw -= a.side * 2;
+    w.tick += 1;
+    w.chase();
+    let b = w.apparition.unwrap();
+    assert_eq!(b.fading, 0);
+    assert!(w.off_view(b.at) <= fx::deg(51));
+    // look straight at it: it goes within FADE_TICKS
+    let to = b.at.sub(w.eye());
+    w.yaw = yaw_of(to);
+    w.pitch = fx::wrap(fx::atan2(to.y, to.len_xz()));
+    for _ in 0..=FADE_TICKS {
+        w.tick += 1;
+        w.chase();
+    }
+    assert!(w.apparition.is_none());
+}
+
+#[test]
+fn an_apparition_never_hangs_inside_a_wall() {
+    let w0 = playing();
+    let mut shown = 0;
+    for room in [1usize, 2, 3, 5, 7, 10] {
+        let r = w0.mall.rooms[room];
+        for k in 0..16 {
+            let mut w = w0.clone();
+            w.body = Body::at(v3((r.lo.x + r.hi.x) / 2, 0, (r.lo.z + r.hi.z) / 2));
+            w.yaw = k * fx::TURN / 16;
+            for kind in [Sight::Eyes, Sight::Smile, Sight::Hands] {
+                let Some(at) = w.apparition_spot(kind, fx::deg(40), int(7)) else {
+                    continue;
+                };
+                shown += 1;
+                let lo = at.sub(v3(ONE / 5, ONE / 5, ONE / 5));
+                let hi = at.add(v3(ONE / 5, ONE / 5, ONE / 5));
+                for s in &w.mall.slabs {
+                    let inside = lo.x < s.hi.x
+                        && hi.x > s.lo.x
+                        && lo.y < s.hi.y
+                        && hi.y > s.lo.y
+                        && lo.z < s.hi.z
+                        && hi.z > s.lo.z;
+                    assert!(!inside, "room {room} yaw {k}");
+                }
+            }
+        }
+    }
+    assert!(shown > 150, "{shown}");
+}
+
+#[test]
+fn the_spirit_follows_you_out_through_every_doorway() {
+    // T19: it sat on the cursed store's doorway once you were two rooms on
+    let mut w = playing();
+    w.door_open[0] = ONE;
+    let b = w.mall.doors[0].brush;
+    w.mall.map.brushes[b] = mall::open_brush();
+    w.body = Body::at(v3(int(97), 0, 0));
+    w.tick(&Input::default());
+    w.begin_chase();
+    // carried along the way out at 3 m/s, kept alive to watch it
+    let path = [
+        v3(int(97), 0, 0),
+        v3(int(88), 0, 0),
+        v3(int(62), 0, int(2)),
+        v3(int(30), 0, 0),
+        v3(int(-5), 0, 0),
+    ];
+    let mut last = w.spirit.at;
+    let mut still = 0;
+    let mut longest = 0;
+    for leg in path.windows(2) {
+        let way = leg[1].sub(leg[0]);
+        let n = way.len_xz() / (ONE * 3 / 60);
+        for k in 0..n {
+            w.body.origin = leg[0].add(way.scale(fx::div(k, n)));
+            w.health = HEALTH;
+            w.tick(&Input::default());
+            still = if w.spirit.at == last { still + 1 } else { 0 };
+            if w.spirit.chase_ticks > RISE_TICKS {
+                longest = longest.max(still);
+            }
+            last = w.spirit.at;
+        }
+    }
+    assert!(longest < HZ as i32, "still for {longest} ticks");
+    // out of the court behind you
+    assert!(w.spirit.at.x < int(62), "{}", fx::decimal(w.spirit.at.x, 1));
+}
+
+#[test]
+fn the_spirit_stares_then_screams_then_comes_slowly_and_faster() {
+    let mut w = playing();
+    w.body = Body::at(v3(int(97), 0, 0));
+    w.tick(&Input::default());
+    w.begin_chase();
+    let rose = w.spirit.at;
+    let mut screamed = None;
+    for t in 1..=RISE_TICKS + 1 {
+        w.body.origin = v3(int(60), 0, int(10));
+        w.tick(&Input::default());
+        if w.voices.iter().any(|v| v.recipe == "spirit_scream") {
+            screamed = Some(t);
+        }
+    }
+    assert_eq!(screamed, Some(RISE_TICKS + 1));
+    // its first second: about 1 m/s (1.0 rising to 1.13)
+    let a = w.spirit.at;
+    for _ in 0..HZ {
+        w.body.origin = v3(int(60), 0, int(10));
+        w.tick(&Input::default());
+    }
+    let first = w.spirit.at.sub(a).len_xz();
+    assert!(
+        first > ONE * 9 / 10 && first < ONE * 125 / 100,
+        "{}",
+        fx::decimal(first, 2)
+    );
+    // twenty seconds on: 3.6 m/s (kept on your trail, not searching)
+    while w.spirit.chase_ticks < RISE_TICKS + SPEED_RAMP {
+        w.body.origin = v3(int(30), 0, 0);
+        w.spirit.unseen = 0;
+        w.tick(&Input::default());
+        w.health = HEALTH;
+    }
+    let b = w.spirit.at;
+    w.body.origin = v3(int(30), 0, 0);
+    w.spirit.unseen = 0;
+    w.tick(&Input::default());
+    let pace = w.spirit.at.sub(b).len_xz() * HZ as i32;
+    assert!(near(pace, ONE * 36 / 10, ONE / 10), "{}", fx::decimal(pace, 2));
+    assert_ne!(rose, w.spirit.at);
 }

@@ -18,11 +18,12 @@ Stage 8 done: the first version is live at https://sgilson7.github.io/chum-scare
 - Director (T7): `last_scare` wait at current menace; `kinds_used`/`last_kind`; `mannequin_to_turn`; `GLIMPSE_NEAR`/`FAR`, `glimpse_wait`. Screen edge at 16:9 is 51°, not `HALF_VIEW` (R6.3).
 - Curios (T12): E picks up and puts down, the left button uses, the revolver holstered meanwhile (R8.4); each answers once; the girl may stand behind a counter (R8.5).
 - Fuse box (T14): E throws it (court lamps out 40 s, cult blind and deaf 12 s), a shot puts it out for good. Spirit rises in the far back corner and stands 3 s (T15). Darker: ambient 1/250, fog 1/600, exposure ≤ 1.05, lamps ×1.5 (T16).
-- Notebook R1.1 to R9.6; person rows R1.6 (Blender models, now with the girl and curios), R1.11 (lists to read), R5.5 (play the court), R8.2 (approve the signs), R9.6 (judge the darkness).
+- Scares (T17 to T19): director scares hush the room 3 s with a `dread` swell; own steps at half; stranger's steps heavy, nearing; knock and whisper kinds; apparitions (eyes, smile, hands) wait at the screen's edge until looked at; spirit glimpses 1.25 s; the spirit stares 3 s, screams, comes at 1 m/s to 3.6 over 20 s, follows your trail, never sits on a doorway.
+- Notebook R1.1 to R10.3; person rows R1.6 (Blender models, now with the girl and curios), R1.11 (lists to read), R5.5 (play the court), R8.2 (approve the signs), R9.6 (judge the darkness).
 
 ## What is next
 
-1. The person plays the court (R5.5), says what stopped them after the cult (R7.2) and reads the signs (R8.2) and judges the darkness (R9.6); next T row: T17.
+1. The person plays the court (R5.5), says what stopped them after the cult (R7.2) and reads the signs (R8.2) and judges the darkness (R9.6); next T row: T20.
 2. Open: R2.6 (hand is one Verlet point), R3.4 (dust motes, bounce light); person rows R1.6, R1.11.
 
 ## Cards the next session needs

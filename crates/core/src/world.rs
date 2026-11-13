@@ -149,6 +149,40 @@ pub struct Spirit {
     pub chase_ticks: i32,
 }
 
+/// T18: what stays at the edge of the view until you look at it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Sight {
+    /// a pair of pale eyes at head height
+    Eyes,
+    /// a wide smile of teeth, no face around it
+    Smile,
+    /// two long pale arms reaching toward you
+    Hands,
+}
+
+impl Sight {
+    /// how high it hangs
+    pub fn height(self) -> Fx {
+        match self {
+            Sight::Eyes => ONE * 165 / 100,
+            Sight::Smile => ONE * 145 / 100,
+            Sight::Hands => ONE * 120 / 100,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Apparition {
+    pub kind: Sight,
+    pub at: V3,
+    /// the angle off the view it keeps to, and how far it stood
+    pub side: i32,
+    pub dist: Fx,
+    pub age: i32,
+    /// ticks left as it goes
+    pub fading: i32,
+}
+
 /// The court's fuse box (T14): on, thrown off until a tick, or shot dead.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Breaker {
@@ -309,7 +343,13 @@ pub struct World {
     pub kinds_used: [i32; mall::ScareKind::COUNT],
     pub last_kind: Option<ScareKind>,
     /// ticks until the spirit may be glimpsed again (CH-Q25)
+    pub spirit_wait: i32,
+    /// ticks until the next apparition may come (T18)
     pub glimpse_wait: i32,
+    /// T18: the apparition at the edge of the view, if any
+    pub apparition: Option<Apparition>,
+    /// T17: ticks the room's own sounds stay hushed after a scare
+    pub hush: i32,
     pub pending_steps: Vec<(i64, V3)>,
     /// the curios (T12): one state each, the one in your hand, the girl,
     /// the camera's flash and what is still to happen; whether the
@@ -419,7 +459,10 @@ impl World {
             last_scare: i64::MIN / 2,
             kinds_used: [0; mall::ScareKind::COUNT],
             last_kind: None,
+            spirit_wait: 0,
             glimpse_wait: 0,
+            apparition: None,
+            hush: 0,
             pending_steps: Vec::new(),
             curios: m
                 .curios
@@ -1010,7 +1053,8 @@ impl World {
                     ONE * 60 / 100
                 };
                 let side = if self.step_side { ONE / 6 } else { -ONE / 6 };
-                self.say_head(recipe, v3(side, -ONE * 15 / 10, -ONE / 5), loud);
+                // T17: heard at half (the cult still hears the full step)
+                self.say_head(recipe, v3(side, -ONE * 15 / 10, -ONE / 5), loud / 2);
                 if self.revolver.box_rounds > 0 && !self.body.ducked {
                     self.say_head("box_rattle", v3(-ONE / 4, -ONE, 0), ONE * 12 / 100);
                 }
@@ -1288,6 +1332,7 @@ impl World {
     /// while the hands are busy (and now and then otherwise), always out of
     /// view (CH-4) and only where a sound can reach you.
     fn director(&mut self) {
+        self.hush = (self.hush - 1).max(0);
         let menace = self.menace();
         // the wait is the ceiling of the menace you are in now, counted from
         // the last scare: walking deeper shortens it (CH-Q26)
@@ -1358,6 +1403,10 @@ impl World {
         let s = self.mall.scares[pick];
         self.kinds_used[s.kind.index()] += 1;
         self.last_kind = Some(s.kind);
+        // T17: a scare is set apart from the mall's own sounds: the room
+        // goes quiet and a low swell comes up under it
+        self.hush = HUSH_TICKS;
+        self.say_head("dread", v3(0, -ONE / 2, 0), ONE * 5 / 10);
         match s.kind {
             ScareKind::DoorCreak => self.say("door_creak", s.at, ONE * 6 / 10, Some("sub_door")),
             ScareKind::Fall => {
@@ -1370,8 +1419,16 @@ impl World {
             }
             ScareKind::Shutter => self.say("shutter", s.at, ONE * 7 / 10, Some("sub_shutter")),
             ScareKind::Steps => {
-                for k in 0..3 {
-                    self.pending_steps.push((self.tick + 20 + k * 22, s.at));
+                // T17: slow, heavy and coming nearer, unlike your own: four
+                // steps 0.65 s apart, each 0.7 m closer to where you are
+                let toward = v3(eye.x - s.at.x, 0, eye.z - s.at.z);
+                let l = toward.len_xz().max(1);
+                for k in 0..4 {
+                    // 0.7 m × k along the unit way toward you
+                    let along = fx::div(ONE * 7 / 10 * k, l);
+                    let at =
+                        s.at.add(v3(fx::mul(toward.x, along), 0, fx::mul(toward.z, along)));
+                    self.pending_steps.push((self.tick + 30 + k as i64 * 39, at));
                 }
                 self.marks.push(Mark {
                     key: "sub_steps",
@@ -1380,6 +1437,8 @@ impl World {
                 });
             }
             ScareKind::Laugh => self.say("laugh", s.at, ONE * 5 / 10, Some("sub_laugh")),
+            ScareKind::Knock => self.say("knock", s.at, ONE * 6 / 10, Some("sub_knock_wall")),
+            ScareKind::Whisper => self.say("whisper", s.at, ONE * 4 / 10, Some("sub_whisper")),
             ScareKind::Glass => {
                 self.say("pop_glass", s.at, ONE * 7 / 10, Some("sub_light"));
                 let near = self
@@ -1730,6 +1789,87 @@ impl World {
         }
     }
 
+    // T18: apparitions ----------------------------------------------------
+
+    /// Eyes, a smile or reaching hands at the edge of the view. Each stays
+    /// there, kept at the edge while you turn, until you look straight at
+    /// it, come within 2 m, or a minute passes; then it goes.
+    fn apparitions(&mut self) {
+        self.glimpse_wait = (self.glimpse_wait - 1).max(0);
+        let eye = self.eye();
+        if let Some(mut a) = self.apparition {
+            a.age += 1;
+            if a.fading > 0 {
+                a.fading -= 1;
+                self.apparition = if a.fading > 0 { Some(a) } else { None };
+                return;
+            }
+            let off = self.off_view(a.at);
+            let near = a.at.sub(eye).len_xz() < APPARITION_NEAREST;
+            if off < LOOKED_AT || near || a.age > APPARITION_LIFE {
+                a.fading = FADE_TICKS;
+                self.glimpse_wait = APPARITION_WAIT;
+                self.say("wisp", a.at, ONE / 4, None);
+            } else if off > SCREEN_EDGE {
+                // gone off the screen as you turned: back to the edge of
+                // the view on its side, moving only while unseen
+                if let Some(at) = self.apparition_spot(a.kind, a.side, a.dist) {
+                    a.at = at;
+                }
+            }
+            self.apparition = Some(a);
+            return;
+        }
+        if self.menace() < 1 || self.glimpse_wait > 0 || !self.rng.chance(1, APPARITION_CHANCE) {
+            return;
+        }
+        let kind = match self.rng.below(3) {
+            0 => Sight::Eyes,
+            1 => Sight::Smile,
+            _ => Sight::Hands,
+        };
+        let off = GLIMPSE_NEAR + self.rng.below((GLIMPSE_FAR - GLIMPSE_NEAR) as u32) as i32;
+        let side = if self.rng.chance(1, 2) { off } else { -off };
+        let dist = int(4) + self.rng.below(int(4) as u32) as i32;
+        if let Some(at) = self.apparition_spot(kind, side, dist) {
+            self.apparition = Some(Apparition {
+                kind,
+                at,
+                side,
+                dist,
+                age: 0,
+                fading: 0,
+            });
+        }
+    }
+
+    /// Where an apparition of `kind` stands `side` off the view and up to
+    /// `dist` away: nearer until the eye can see it and it is clear of
+    /// every wall; at least 3 m off.
+    pub fn apparition_spot(&self, kind: Sight, side: i32, dist: Fx) -> Option<V3> {
+        let dir = facing(self.yaw + side, 0);
+        let eye = self.eye();
+        let mut d = dist;
+        while d >= int(3) {
+            let at = self.body.origin.add(dir.scale(d)).add(v3(0, kind.height(), 0));
+            let mut sc = Scratch::default();
+            let half = v3(ONE / 5, ONE / 5, ONE / 5);
+            let t = trace_box(
+                &self.mall.map,
+                &mut sc,
+                at,
+                at.add(v3(0, ONE / 50, 0)),
+                half.neg(),
+                half,
+            );
+            if !t.start_solid && !t.hit() && self.clear_line(eye, at) {
+                return Some(at);
+            }
+            d -= ONE / 2;
+        }
+        None
+    }
+
     // T14: the fuse box ----------------------------------------------------
 
     /// The court's lamps go out; every cultist is blind for a moment.
@@ -1788,7 +1928,7 @@ impl World {
             .collect();
         self.pending_steps.retain(|(t, _)| *t > now);
         for p in due {
-            self.say("step_other", p, ONE * 6 / 10, None);
+            self.say("step_stranger", p, ONE * 7 / 10, None);
         }
     }
 
@@ -2054,10 +2194,11 @@ impl World {
             }
         }
         if !self.spirit.chasing {
-            // glimpses at the edge of the view (menace 3 and 4)
+            // glimpses of the spirit at the edge of the view (menace 3 and
+            // 4); T18: held 1.25 s (was a third of a second)
             self.spirit.glimpse = (self.spirit.glimpse - 1).max(0);
-            self.glimpse_wait = (self.glimpse_wait - 1).max(0);
-            if self.menace() >= 3 && self.glimpse_wait == 0 && self.rng.chance(1, 900) {
+            self.spirit_wait = (self.spirit_wait - 1).max(0);
+            if self.menace() >= 3 && self.spirit_wait == 0 && self.rng.chance(1, 900) {
                 // CH-Q25: anywhere from GLIMPSE_NEAR to GLIMPSE_FAR off the
                 // view, 5 to 12 m off, where the eye can see it, and not
                 // again for 20 s
@@ -2070,24 +2211,34 @@ impl World {
                     let at = self.body.origin.add(dir.scale(d));
                     if self.clear_line(eye, at.add(v3(0, ONE, 0))) {
                         self.spirit.at = at;
-                        self.spirit.glimpse = 20;
-                        self.glimpse_wait = 20 * HZ as i32;
+                        self.spirit.glimpse = GLIMPSE_TICKS;
+                        self.spirit_wait = 20 * HZ as i32;
                         break;
                     }
                     d -= ONE;
                 }
             }
+            self.apparitions();
             return;
         }
         let s = &mut self.spirit;
         s.chase_ticks += 1;
-        // 1.1 m to 4 m over three minutes
-        let grow = (s.chase_ticks as i64 * (ONE * 29 / 10) as i64 / (180 * HZ)) as Fx;
+        // 1.1 m to 4 m over a minute and a half (T19; was three minutes),
+        // from when it starts to come
+        let since = (s.chase_ticks - RISE_TICKS).max(0);
+        let grow = (since as i64 * (ONE * 29 / 10) as i64 / (GROW_TICKS as i64)) as Fx;
         s.size = (ONE * 11 / 10 + grow).min(int(4));
-        // T15: it stands where it rose for a moment before it comes
+        // T15, T19: it stands where it rose and stares at you, then
+        // screams and comes
         if s.chase_ticks <= RISE_TICKS {
             return;
         }
+        if s.chase_ticks == RISE_TICKS + 1 {
+            let at = s.at.add(v3(0, s.size, 0));
+            self.say("spirit_scream", at, ONE, Some("sub_spirit_scream"));
+            self.hush = HUSH_TICKS;
+        }
+        let s = &mut self.spirit;
         s.unseen += 1;
         let me = self.body.origin;
         let hidden = matches!(self.mode, Mode::Hidden(_));
@@ -2124,7 +2275,10 @@ impl World {
         let way = v3(next.x - s.at.x, 0, next.z - s.at.z);
         let l = way.len_xz();
         let lost = s.unseen > 12 * HZ as i32;
-        let speed = if lost { ONE * 12 / 10 } else { ONE * 36 / 10 };
+        // T19: slow at first, at full pace after SPEED_RAMP
+        let since = s.chase_ticks - RISE_TICKS;
+        let hunt = HUNT_FROM + (HUNT_TOP - HUNT_FROM) * since.min(SPEED_RAMP) / SPEED_RAMP;
+        let speed = if lost { ONE * 12 / 10 } else { hunt };
         if l > ONE / 4 {
             let step = speed / HZ as i32;
             s.at = s.at.add(v3(
@@ -2136,6 +2290,11 @@ impl World {
             // searching: on to a scare point near where it last knew you
             let k = self.rng.below(self.mall.scares.len() as u32) as usize;
             self.spirit.last_known = self.mall.scares[k].at;
+        } else if !hidden && prey.is_none() {
+            // T19: where it last saw you and you are gone: it follows your
+            // trail (it used to stand there until it gave up); hiding
+            // breaks the trail
+            self.spirit.last_known = me;
         }
         if self.tick % 90 == 0 {
             let at = self.spirit.at.add(v3(0, self.spirit.size, 0));
@@ -2174,6 +2333,11 @@ impl World {
         let mut best = goal;
         let mut low = i32::MAX;
         for p in &self.mall.portals {
+            // T19: not the doorway it stands on: there it may count itself
+            // in either room, pick the same doorway again and never leave
+            if p.at.sub(from).len_xz() < ONE / 2 {
+                continue;
+            }
             if p.a == a || p.b == a {
                 let dd = p.at.sub(toward).len_xz() + p.at.sub(from).len_xz() / 4;
                 if dd < low {
@@ -2311,9 +2475,34 @@ pub const DAZZLE_TICKS: i32 = 12 * HZ as i32;
 
 /// T15: how long the spirit stands where it rose before it hunts
 pub const RISE_TICKS: i32 = 3 * HZ as i32;
+/// T19: its pace when it starts to come and at full hunt, the ticks
+/// between, and the ticks it takes to grow to full size
+pub const HUNT_FROM: Fx = ONE;
+pub const HUNT_TOP: Fx = ONE * 36 / 10;
+pub const SPEED_RAMP: i32 = 20 * HZ as i32;
+pub const GROW_TICKS: i32 = 90 * HZ as i32;
 
 /// T16: the most the eye brightens the dark
 pub const EXPOSURE_DARK: Fx = ONE * 105 / 100;
+
+/// T18: an apparition goes once it is this near the middle of the view
+/// ("looked at"), once you are this near, or after a minute; it keeps
+/// inside the screen's edge (51° at 16:9); one comes about every ten
+/// seconds at menace 1 and up, 25 s after the last went
+pub const LOOKED_AT: i32 = fx::deg(12);
+/// how long a glimpse of the spirit stays (was 20 ticks)
+pub const GLIMPSE_TICKS: i32 = 75;
+pub const APPARITION_NEAREST: Fx = 2 * ONE;
+pub const APPARITION_LIFE: i32 = 60 * HZ as i32;
+pub const SCREEN_EDGE: i32 = fx::deg(51);
+pub const FADE_TICKS: i32 = 6;
+pub const APPARITION_WAIT: i32 = 25 * HZ as i32;
+pub const APPARITION_CHANCE: u32 = 600;
+
+/// T17: how long the room's sounds hush after a director scare, and how
+/// low they go
+pub const HUSH_TICKS: i32 = 3 * HZ as i32;
+pub const HUSH_FLOOR: Fx = ONE * 15 / 100;
 /// in the head: the right hand, and the right ear for the receiver
 pub const HAND: V3 = V3 {
     x: ONE / 5,
