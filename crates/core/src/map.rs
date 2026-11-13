@@ -302,9 +302,7 @@ fn disc_reach(shape: &Shape) -> Fx {
 
 fn disc_corners(shape: &Shape) -> Vec<(Fx, Fx)> {
     let r = disc_reach(shape);
-    (0..mesh::DISC_SIDES)
-        .map(|j| mesh::disc_corner(j, r))
-        .collect()
+    (0..mesh::DISC_SIDES).map(|j| mesh::disc_corner(j, r)).collect()
 }
 
 /// T28: a flat-sided column of `mesh::DISC_SIDES` round the vertical
@@ -419,7 +417,6 @@ impl Brush {
         // a corner on a face may read a few units past it after rounding
         self.planes.iter().all(|pl| pl.n.dot(p) <= pl.d + HOLD_TOLERANCE)
     }
-
 }
 
 impl Map {
@@ -438,7 +435,6 @@ impl Map {
             }
         }
     }
-
 }
 
 #[cfg(test)]
@@ -477,7 +473,11 @@ mod tests {
         // CH: the practice room is gone with its drawing (R2.2); a 64 m floor
         // and its spawn stand in for it
         let m = Map {
-            brushes: vec![block(v3(int(-32), -ONE, int(-32)), v3(int(32), 0, int(32)), Surface::Floor)],
+            brushes: vec![block(
+                v3(int(-32), -ONE, int(-32)),
+                v3(int(32), 0, int(32)),
+                Surface::Floor,
+            )],
             spawns: vec![(V3::ZERO, 0)],
             ..Map::default()
         };

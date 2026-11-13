@@ -2,25 +2,25 @@
 
 The project's long-term memory, at most two pages. Rewrite it at each milestone (a stage boundary, a finished feature, a deploy) and before a handoff. After a compaction or in a new session, read this file and ask `tools/ask.py` for cards; do not re-read files it already summarises. `scripts/context_check.py` checks its size, its commit and the cards it cites.
 
-Commit: 64174d2
+Commit: see `git log -1`
 
 ## Where the build is
 
-Stage 0 done, stage 1 brief written, stage 2 waiting. Nothing built. The design journal at `../ChumontilladoHorror-journal/index.html` has six tabs (1 How I use Builder, 2 The game, 3 3D sound research, 4 Our soundscape, 5 Cleansing ritual, 6 Light) and 22 questions CH-Q1 to CH-Q22 as chips (`decisions.json`). `journal_check.py` passes. Waiting for the person's answers.
+Stage 5 to 8: the first version is built and checked locally; next is the deploy to GitHub Pages (`chum-scare`, CH-Q7 A) and the journal's entries for it. Answers CH-Q1 to CH-Q22 are recorded (all defaults but CH-Q8 B, T1; CH-Q12 note, T2).
 
 ## Decisions in force
 
-- Autonomy: deploy when the checks pass, to a public repo the person named "Chum Scare" (default `chum-scare`, CH-Q7, R1.3); no subagents; plan NOT approved in advance.
-- Rules CH-1 to CH-12 (journal tab 1 table); move agreed ones into CLAUDE.md "Rules agreed" after answers.
-- Horror TUNING values: journal tab 1 table (walk 1.3, accel 4, friction 5, stop 1.0, gravity 9.81, jump 3.0, all speed tech off).
-- Notebook R1.1 to R1.11; R1.6 and R1.11 are the person's.
-- Baseline: 38 tests; check.sh fails only at step 7 tags (R1.1); Playwright venv now installed.
+- Autonomy: deploy when the checks pass (BRIEF.md); no subagents.
+- Horror TUNING: walk 1.3, sprint 4.0 (6 s breath), crouch 40%, hop 3.0 m/s; accelerate 8, friction 6, stop_speed 0.5 (R2.4); all speed tech off (CH-10).
+- Settings kept by `kits/saves`' store (D17 changed, R3.2); nothing else is stored.
+- Notebook R1.1 to R3.5; person rows R1.6 (Blender models), R1.11 (lists to read).
 
 ## What is next
 
-1. Read answers (`python3 tools/journal/decisions.py --answers "..."`), write an *agreed* entry, TRIAGE rows for non-defaults, rules into CLAUDE.md/AGENTS.md.
-2. Build in PLAN.md order; journal entries per visible change; deploy.
+1. Deploy: `gh repo create chum-scare --public`, push, `./scripts/publish.sh`, browser check against the live address.
+2. Journal: agreed entry (CH-Q1 to CH-Q22), divergences (R2.4, R3.4), screenshots, live entry; republish the artifact.
+3. Then the person plays and triages.
 
 ## Cards the next session needs
 
-`card:docs.context.how-to-read-builder`, `card:docs.procedure.the-second-order-notebook.p3`, `card:kits.realtime.input-between-ticks.p2`, `card:entries.kinds.p2`
+`card:docs.context.how-to-read-builder`, `card:docs.procedure.p3`, `card:entries.kinds.p2`

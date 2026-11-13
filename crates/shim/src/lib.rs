@@ -25,15 +25,24 @@ pub struct Game {
 impl Game {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32, minute_of_day: i32) -> Game {
-        Game { inner: api::Game::new(seed, minute_of_day) }
+        Game {
+            inner: api::Game::new(seed, minute_of_day),
+        }
     }
 
     pub fn resize(&mut self, css_w: f64, css_h: f64, dpr: f64) -> Vec<i32> {
-        self.inner.resize(css_w as i32, css_h as i32, (dpr * 100.0) as i32).to_vec()
+        self.inner
+            .resize(css_w as i32, css_h as i32, (dpr * 100.0) as i32)
+            .to_vec()
     }
 
     pub fn advance(&mut self, now_ms: f64, bits: u32, dx: f64, dy: f64) {
-        self.inner.advance((now_ms * 1000.0) as i64, bits, (dx * 100.0) as i32, (dy * 100.0) as i32)
+        self.inner.advance(
+            (now_ms * 1000.0) as i64,
+            bits,
+            (dx * 100.0) as i32,
+            (dy * 100.0) as i32,
+        )
     }
 
     pub fn act(&mut self, name: &str, value: &str) -> String {
@@ -44,11 +53,15 @@ impl Game {
         self.inner.numbers()
     }
 
+    pub fn settings(&self) -> String {
+        self.inner.settings()
+    }
+
     pub fn ui(&self) -> String {
         self.inner.ui()
     }
 
-    pub fn sounds(&self) -> String {
+    pub fn sounds(&mut self) -> String {
         self.inner.sounds()
     }
 

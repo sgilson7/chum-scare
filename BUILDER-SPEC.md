@@ -74,4 +74,4 @@ These stay with the person and go in `BRIEF.md` or `PLAN.md`:
 
 | Default | Changed to | Reason | Recorded in |
 | --- | --- | --- | --- |
-| | | | |
+| D17 | `web/save/store.js` keeps the core's settings text in `localStorage`; no other page file names browser storage; no progress is kept | CH-Q6 A: a player deaf in one ear keeps Mono on (kits/saves, settings only) | `crates/core/tests/storage_fence.rs`; SECOND-ORDER.md R3.2 |

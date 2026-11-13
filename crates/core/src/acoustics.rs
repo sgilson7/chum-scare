@@ -76,10 +76,15 @@ pub fn distance_gain(d: Fx) -> Fx {
 /// How `from` is heard at `to`. `open` gives each door's openness (0 shut,
 /// `ONE` open); `straight_blocked` says whether walls cut the straight line
 /// (the world traces it).
-pub fn hear(rooms: &[Room], portals: &[Portal], open: &[Fx], from: V3, to: V3, straight_blocked: bool) -> Heard {
-    let room_of = |p: V3| {
-        rooms.iter().position(|r| r.holds(p)).unwrap_or(0)
-    };
+pub fn hear(
+    rooms: &[Room],
+    portals: &[Portal],
+    open: &[Fx],
+    from: V3,
+    to: V3,
+    straight_blocked: bool,
+) -> Heard {
+    let room_of = |p: V3| rooms.iter().position(|r| r.holds(p)).unwrap_or(0);
     let sr = room_of(from);
     let lr = room_of(to);
     let straight = dist_xz(from, to).max(ONE / 10);
@@ -93,7 +98,14 @@ pub fn hear(rooms: &[Room], portals: &[Portal], open: &[Fx], from: V3, to: V3, s
             listener_room: lr,
         }
     } else {
-        Heard { gain: distance_gain(straight), cutoff_hz: OPEN_HZ, apparent: from, distance: straight, source_room: sr, listener_room: lr }
+        Heard {
+            gain: distance_gain(straight),
+            cutoff_hz: OPEN_HZ,
+            apparent: from,
+            distance: straight,
+            source_room: sr,
+            listener_room: lr,
+        }
     };
     if sr == lr {
         return direct;
@@ -132,7 +144,14 @@ pub fn hear(rooms: &[Room], portals: &[Portal], open: &[Fx], from: V3, to: V3, s
                 last.y,
                 to.z + fx::div(fx::mul(toward.z, length), along),
             );
-            let routed = Heard { gain, cutoff_hz: hz, apparent, distance: length, source_room: sr, listener_room: lr };
+            let routed = Heard {
+                gain,
+                cutoff_hz: hz,
+                apparent,
+                distance: length,
+                source_room: sr,
+                listener_room: lr,
+            };
             if routed.gain >= direct.gain {
                 routed
             } else {
@@ -145,7 +164,15 @@ pub fn hear(rooms: &[Room], portals: &[Portal], open: &[Fx], from: V3, to: V3, s
 
 /// The portals on the shortest route from room `sr` to room `lr`
 /// (Dijkstra over the portals; a shut door lengthens its edge).
-fn route(rooms: usize, portals: &[Portal], open: &[Fx], from: V3, sr: usize, to: V3, lr: usize) -> Option<Vec<usize>> {
+fn route(
+    rooms: usize,
+    portals: &[Portal],
+    open: &[Fx],
+    from: V3,
+    sr: usize,
+    to: V3,
+    lr: usize,
+) -> Option<Vec<usize>> {
     let n = portals.len();
     let cost = |p: &Portal| match p.door {
         Some(dn) if open.get(dn).copied().unwrap_or(ONE) < ONE / 2 => SHUT_EXTRA,
@@ -220,10 +247,27 @@ mod tests {
     fn two_rooms(door: Option<usize>) -> (Vec<Room>, Vec<Portal>) {
         // room A west of x = 6, room B east of it; the portal at (6, 8)
         let rooms = vec![
-            Room { key: "a", lo: v3(int(-10), 0, int(-10)), hi: v3(int(6), int(5), int(20)), reverb: Reverb::StoreSoft, floor: TILE },
-            Room { key: "b", lo: v3(int(6) + 1, 0, int(-10)), hi: v3(int(30), int(5), int(20)), reverb: Reverb::Corridor, floor: TILE },
+            Room {
+                key: "a",
+                lo: v3(int(-10), 0, int(-10)),
+                hi: v3(int(6), int(5), int(20)),
+                reverb: Reverb::StoreSoft,
+                floor: TILE,
+            },
+            Room {
+                key: "b",
+                lo: v3(int(6) + 1, 0, int(-10)),
+                hi: v3(int(30), int(5), int(20)),
+                reverb: Reverb::Corridor,
+                floor: TILE,
+            },
         ];
-        let portals = vec![Portal { a: 0, b: 1, at: v3(int(6), 0, int(8)), door }];
+        let portals = vec![Portal {
+            a: 0,
+            b: 1,
+            at: v3(int(6), 0, int(8)),
+            door,
+        }];
         (rooms, portals)
     }
 
@@ -238,11 +282,23 @@ mod tests {
         // L + 15 × unit(P − L) = (−4, 8). The bend at P: cos θ = 0.6, 53.13°.
         let (rooms, portals) = two_rooms(None);
         let h = hear(&rooms, &portals, &[], v3(0, 0, 0), v3(int(11), 0, int(8)), true);
-        assert!(near(h.distance, int(15), ONE / 50), "{}", fx::decimal(h.distance, 3));
-        assert!(near(h.apparent.x, int(-4), ONE / 20), "{}", fx::decimal(h.apparent.x, 3));
+        assert!(
+            near(h.distance, int(15), ONE / 50),
+            "{}",
+            fx::decimal(h.distance, 3)
+        );
+        assert!(
+            near(h.apparent.x, int(-4), ONE / 20),
+            "{}",
+            fx::decimal(h.apparent.x, 3)
+        );
         assert!(near(h.apparent.z, int(8), ONE / 20));
         // gain: 2/15 × (1 − 0.5 × 53.13/90) = 0.1333 × 0.7049 = 0.0940
-        assert!(near(h.gain, ONE * 940 / 10_000, ONE / 500), "{}", fx::decimal(h.gain, 4));
+        assert!(
+            near(h.gain, ONE * 940 / 10_000, ONE / 500),
+            "{}",
+            fx::decimal(h.gain, 4)
+        );
         // cut-off: 18000 − 16800 × 53.13/90 = 8082 Hz
         assert!((h.cutoff_hz - 8082).abs() < 40, "{}", h.cutoff_hz);
     }
@@ -250,9 +306,21 @@ mod tests {
     #[test]
     fn a_shut_door_lets_through_twelve_percent_and_only_the_lows() {
         let (rooms, portals) = two_rooms(Some(0));
-        let open = hear(&rooms, &portals, &[ONE], v3(0, 0, 0), v3(int(11), 0, int(8)), true);
+        let open = hear(
+            &rooms,
+            &portals,
+            &[ONE],
+            v3(0, 0, 0),
+            v3(int(11), 0, int(8)),
+            true,
+        );
         let shut = hear(&rooms, &portals, &[0], v3(0, 0, 0), v3(int(11), 0, int(8)), true);
-        assert!(near(shut.gain, fx::mul(open.gain, SHUT_GAIN), ONE / 1000), "{} {}", shut.gain, open.gain);
+        assert!(
+            near(shut.gain, fx::mul(open.gain, SHUT_GAIN), ONE / 1000),
+            "{} {}",
+            shut.gain,
+            open.gain
+        );
         assert_eq!(shut.cutoff_hz, SHUT_HZ);
     }
 
@@ -260,10 +328,27 @@ mod tests {
     fn a_near_sound_through_a_thin_wall_beats_a_long_way_round() {
         // source 1 m west of the wall, listener 1 m east, the portal 20 m off
         let rooms = vec![
-            Room { key: "a", lo: v3(int(-10), 0, int(-30)), hi: v3(0, int(5), int(30)), reverb: Reverb::StoreSoft, floor: TILE },
-            Room { key: "b", lo: v3(1, 0, int(-30)), hi: v3(int(10), int(5), int(30)), reverb: Reverb::Corridor, floor: TILE },
+            Room {
+                key: "a",
+                lo: v3(int(-10), 0, int(-30)),
+                hi: v3(0, int(5), int(30)),
+                reverb: Reverb::StoreSoft,
+                floor: TILE,
+            },
+            Room {
+                key: "b",
+                lo: v3(1, 0, int(-30)),
+                hi: v3(int(10), int(5), int(30)),
+                reverb: Reverb::Corridor,
+                floor: TILE,
+            },
         ];
-        let portals = vec![Portal { a: 0, b: 1, at: v3(0, 0, int(20)), door: None }];
+        let portals = vec![Portal {
+            a: 0,
+            b: 1,
+            at: v3(0, 0, int(20)),
+            door: None,
+        }];
         let h = hear(&rooms, &portals, &[], v3(-ONE, 0, 0), v3(ONE, 0, 0), true);
         // through the wall: 2/2 × 0.06 = 0.06; round: about 2/40 × bends < 0.05
         assert_eq!(h.cutoff_hz, WALL_HZ);

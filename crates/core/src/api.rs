@@ -27,6 +27,9 @@ pub struct Game {
     width: i32,
     height: i32,
     noise_seed: u64,
+    /// sounds placed after each tick, until the page takes them: none lost
+    /// when a frame runs several ticks, none played twice when it runs none
+    heard: Vec<view::Placed>,
 }
 
 impl Game {
@@ -43,6 +46,7 @@ impl Game {
             width: 1,
             height: 1,
             noise_seed: seed as u64 ^ 0x5EED,
+            heard: Vec::new(),
         }
     }
 
@@ -71,10 +75,16 @@ impl Game {
         self.owed_us += step;
         while self.owed_us >= TICK_US {
             self.owed_us -= TICK_US;
-            let m = crate::input::Mouse { dx: self.pending.0, dy: self.pending.1, wheel: 0 };
+            let m = crate::input::Mouse {
+                dx: self.pending.0,
+                dy: self.pending.1,
+                wheel: 0,
+            };
             self.pending = (0, 0);
             let input = Input::from_page(bits, m);
             self.world.tick(&input);
+            let cam = view::camera(&self.world, self.aspect, 0, 0);
+            self.heard.extend(view::sounds(&self.world, &cam));
         }
     }
 
@@ -116,13 +126,21 @@ impl Game {
     /// The listener: position, forward, up (for Web Audio).
     pub fn listener(&self) -> Vec<i32> {
         let c = self.camera();
-        vec![c.eye.x, c.eye.y, c.eye.z, c.fwd.x, c.fwd.y, c.fwd.z, c.up.x, c.up.y, c.up.z]
+        vec![
+            c.eye.x, c.eye.y, c.eye.z, c.fwd.x, c.fwd.y, c.fwd.z, c.up.x, c.up.y, c.up.z,
+        ]
     }
 
     /// This tick's sounds and the beds, placed for the listener (JSON).
-    pub fn sounds(&self) -> String {
+    pub fn sounds(&mut self) -> String {
         let c = self.camera();
-        json!({ "voices": view::sounds(&self.world, &c), "beds": view::beds(&self.world, &c) }).to_string()
+        let voices: Vec<view::Placed> = std::mem::take(&mut self.heard);
+        json!({ "voices": voices, "beds": view::beds(&self.world, &c) }).to_string()
+    }
+
+    /// The settings as text for `web/save/store.js` (CH-Q6 A).
+    pub fn settings(&self) -> String {
+        crate::world::settings_text(&self.world.settings)
     }
 
     pub fn ui(&self) -> String {
@@ -145,7 +163,11 @@ impl Game {
                 // amplitude 10^(−3 i / total), by halving every total / 10 samples
                 let halvings = i * 10 / total;
                 let frac = (i * 10 % total) * ONE as i64 / total;
-                let amp = if halvings > 30 { 0 } else { (ONE >> halvings) - ((ONE >> halvings) as i64 * frac / ONE as i64 / 2) as i32 };
+                let amp = if halvings > 30 {
+                    0
+                } else {
+                    (ONE >> halvings) - ((ONE >> halvings) as i64 * frac / ONE as i64 / 2) as i32
+                };
                 fx::mul(r.between(-ONE, ONE), amp)
             })
             .collect()
@@ -167,6 +189,7 @@ impl Game {
             "listener": 9,
             "cube": cube(),
             "cube_stride": 6,
+            "cube_part": 3,
             "shadow_size": shadow,
             "ms_to_us": 1000,
             "px_to_hundredths": 100,
@@ -192,7 +215,14 @@ fn cube() -> Vec<i32> {
     for (n, q) in faces {
         for k in [0, 1, 2, 0, 2, 3] {
             // corners at ±½ and unit normals, as Q16.16 like every number out
-            out.extend_from_slice(&[q[k][0] * ONE / 2, q[k][1] * ONE / 2, q[k][2] * ONE / 2, n[0] * ONE, n[1] * ONE, n[2] * ONE]);
+            out.extend_from_slice(&[
+                q[k][0] * ONE / 2,
+                q[k][1] * ONE / 2,
+                q[k][2] * ONE / 2,
+                n[0] * ONE,
+                n[1] * ONE,
+                n[2] * ONE,
+            ]);
         }
     }
     out

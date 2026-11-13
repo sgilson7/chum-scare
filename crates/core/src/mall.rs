@@ -63,7 +63,11 @@ impl Room {
         p.x >= self.lo.x && p.x <= self.hi.x && p.z >= self.lo.z && p.z <= self.hi.z
     }
     pub fn centre(&self) -> V3 {
-        v3((self.lo.x + self.hi.x) / 2, ONE * 3 / 2, (self.lo.z + self.hi.z) / 2)
+        v3(
+            (self.lo.x + self.hi.x) / 2,
+            ONE * 3 / 2,
+            (self.lo.z + self.hi.z) / 2,
+        )
     }
 }
 
@@ -202,14 +206,29 @@ struct Build {
 impl Build {
     fn solid(&mut self, lo: V3, hi: V3, rgb: [i32; 3], material: i32) {
         self.map.brushes.push(block(lo, hi, Surface::Wall));
-        self.slabs.push(Slab { lo, hi, rgb, material });
+        self.slabs.push(Slab {
+            lo,
+            hi,
+            rgb,
+            material,
+        });
     }
     fn floor(&mut self, lo: V3, hi: V3, rgb: [i32; 3], material: i32) {
         self.map.brushes.push(block(lo, hi, Surface::Floor));
-        self.slabs.push(Slab { lo, hi, rgb, material });
+        self.slabs.push(Slab {
+            lo,
+            hi,
+            rgb,
+            material,
+        });
     }
     fn drawn(&mut self, lo: V3, hi: V3, rgb: [i32; 3], material: i32) {
-        self.slabs.push(Slab { lo, hi, rgb, material });
+        self.slabs.push(Slab {
+            lo,
+            hi,
+            rgb,
+            material,
+        });
     }
     /// A wall along x at `z`, from `x0` to `x1`, `h` high, less the gaps.
     fn wall_x(&mut self, z: Fx, x0: Fx, x1: Fx, h: Fx, gaps: &[(Fx, Fx)], rgb: [i32; 3]) {
@@ -254,30 +273,99 @@ pub fn shut_brush(door: &Door) -> Brush {
 }
 
 fn room(key: &'static str, x0: i32, z0: i32, x1: i32, z1: i32, reverb: Reverb, floor: i32) -> Room {
-    Room { key, lo: v3(d(x0), 0, d(z0)), hi: v3(d(x1), int(9), d(z1)), reverb, floor }
+    Room {
+        key,
+        lo: v3(d(x0), 0, d(z0)),
+        hi: v3(d(x1), int(9), d(z1)),
+        reverb,
+        floor,
+    }
 }
 
 /// The mall, built the same way every time.
 pub fn mall() -> Mall {
-    let mut b = Build { map: Map::default(), slabs: Vec::new() };
+    let mut b = Build {
+        map: Map::default(),
+        slabs: Vec::new(),
+    };
     let i = int;
     // floors (sunk a little so none shares a plane with another)
     b.floor(v3(i(-8), -ONE, i(-5)), v3(i(60), 0, i(5)), OLD_TILE, TILE);
-    b.floor(v3(i(-8), -ONE - ONE / 50, i(5)), v3(i(60), -ONE / 50, i(19)), DUST_CARPET, CARPET);
-    b.floor(v3(i(0), -ONE - ONE / 40, i(-15)), v3(i(60), -ONE / 40, i(-5)), OLD_TILE, TILE);
-    b.floor(v3(i(60), -ONE - ONE / 30, i(-15)), v3(i(102), -ONE / 30, i(15)), [104, 98, 86], TILE);
+    b.floor(
+        v3(i(-8), -ONE - ONE / 50, i(5)),
+        v3(i(60), -ONE / 50, i(19)),
+        DUST_CARPET,
+        CARPET,
+    );
+    b.floor(
+        v3(i(0), -ONE - ONE / 40, i(-15)),
+        v3(i(60), -ONE / 40, i(-5)),
+        OLD_TILE,
+        TILE,
+    );
+    b.floor(
+        v3(i(60), -ONE - ONE / 30, i(-15)),
+        v3(i(102), -ONE / 30, i(15)),
+        [104, 98, 86],
+        TILE,
+    );
     // ceilings (drawn only)
-    b.drawn(v3(i(-8), i(5), i(-5)), v3(i(60), i(5) + WALL, i(5)), CEIL, CEILING);
+    b.drawn(
+        v3(i(-8), i(5), i(-5)),
+        v3(i(60), i(5) + WALL, i(5)),
+        CEIL,
+        CEILING,
+    );
     b.drawn(v3(i(0), i(4), i(5)), v3(i(60), i(4) + WALL, i(15)), CEIL, CEILING);
-    b.drawn(v3(i(0), i(4), i(-15)), v3(i(60), i(4) + WALL, i(-5)), CEIL, CEILING);
-    b.drawn(v3(i(-8), d(35), i(5)), v3(i(60), d(35) + WALL, i(19)), CEIL, CEILING);
-    b.drawn(v3(i(90), i(4), i(-5)), v3(i(102), i(4) + WALL, i(5)), CEIL, CEILING);
+    b.drawn(
+        v3(i(0), i(4), i(-15)),
+        v3(i(60), i(4) + WALL, i(-5)),
+        CEIL,
+        CEILING,
+    );
+    b.drawn(
+        v3(i(-8), d(35), i(5)),
+        v3(i(60), d(35) + WALL, i(19)),
+        CEIL,
+        CEILING,
+    );
+    b.drawn(
+        v3(i(90), i(4), i(-5)),
+        v3(i(102), i(4) + WALL, i(5)),
+        CEIL,
+        CEILING,
+    );
     // the court's roof, with the skylight's frame
-    b.drawn(v3(i(60), i(9), i(-15)), v3(i(70), i(9) + WALL, i(15)), CEIL, CEILING);
-    b.drawn(v3(i(80), i(9), i(-15)), v3(i(90), i(9) + WALL, i(15)), CEIL, CEILING);
-    b.drawn(v3(i(70), i(9), i(-15)), v3(i(80), i(9) + WALL, i(-5)), CEIL, CEILING);
-    b.drawn(v3(i(70), i(9), i(5)), v3(i(80), i(9) + WALL, i(15)), CEIL, CEILING);
-    b.drawn(v3(i(70), i(9) + WALL, i(-5)), v3(i(80), i(9) + WALL * 2, i(5)), [40, 48, 60], GLASS);
+    b.drawn(
+        v3(i(60), i(9), i(-15)),
+        v3(i(70), i(9) + WALL, i(15)),
+        CEIL,
+        CEILING,
+    );
+    b.drawn(
+        v3(i(80), i(9), i(-15)),
+        v3(i(90), i(9) + WALL, i(15)),
+        CEIL,
+        CEILING,
+    );
+    b.drawn(
+        v3(i(70), i(9), i(-15)),
+        v3(i(80), i(9) + WALL, i(-5)),
+        CEIL,
+        CEILING,
+    );
+    b.drawn(
+        v3(i(70), i(9), i(5)),
+        v3(i(80), i(9) + WALL, i(15)),
+        CEIL,
+        CEILING,
+    );
+    b.drawn(
+        v3(i(70), i(9) + WALL, i(-5)),
+        v3(i(80), i(9) + WALL * 2, i(5)),
+        [40, 48, 60],
+        GLASS,
+    );
 
     // the corridor's north wall: four shop fronts
     let fronts_n = [(i(7), i(13)), (i(21), i(27)), (i(35), i(41)), (i(49), i(55))];
@@ -286,10 +374,20 @@ pub fn mall() -> Mall {
     let fronts_s = [(i(21), i(27)), (i(35), i(41)), (i(49), i(55))];
     b.wall_x(i(-5), i(-8), i(60), i(5), &fronts_s, DIRTY_PLASTER);
     // the vestibule's glass doors (the exit), its side to the stairwell
-    b.solid(v3(i(-8) - WALL, 0, i(-5)), v3(i(-8), i(5), i(5)), [60, 70, 76], GLASS);
+    b.solid(
+        v3(i(-8) - WALL, 0, i(-5)),
+        v3(i(-8), i(5), i(5)),
+        [60, 70, 76],
+        GLASS,
+    );
     let stair_door = b.door(v3(i(-7), 0, i(5) - WALL / 2), v3(i(-5), d(25), i(5) + WALL / 2));
     b.wall_x(i(5), i(-5), i(-4), i(5), &[], DIRTY_PLASTER);
-    b.drawn(v3(i(-7), d(25), i(5) - WALL / 2), v3(i(-5), i(5), i(5) + WALL / 2), DIRTY_PLASTER, PLASTER);
+    b.drawn(
+        v3(i(-7), d(25), i(5) - WALL / 2),
+        v3(i(-5), i(5), i(5) + WALL / 2),
+        DIRTY_PLASTER,
+        PLASTER,
+    );
     // store walls, north
     for x in [4, 16, 18, 30, 32, 44, 46, 58] {
         b.wall_z(i(x), i(5), i(15), i(4), &[], STAIN);
@@ -297,13 +395,23 @@ pub fn mall() -> Mall {
     // the back wall, with Kandy Korner's back door
     let kandy_door = b.door(v3(i(51), 0, i(15) - WALL / 2), v3(i(53), d(25), i(15) + WALL / 2));
     b.wall_x(i(15), i(-4), i(60), d(35), &[(i(51), i(53))], STAIN);
-    b.drawn(v3(i(51), d(25), i(15) - WALL / 2), v3(i(53), d(35), i(15) + WALL / 2), STAIN, PLASTER);
+    b.drawn(
+        v3(i(51), d(25), i(15) - WALL / 2),
+        v3(i(53), d(35), i(15) + WALL / 2),
+        STAIN,
+        PLASTER,
+    );
     // stores, south
     for x in [18, 30, 32, 44, 46, 58] {
         b.wall_z(i(x), i(-15), i(-5), i(4), &[], STAIN);
     }
     b.wall_x(i(-15), i(18), i(58), i(4), &[], STAIN);
-    b.solid(v3(i(0), 0, i(-15)), v3(i(18), i(5), i(-5)), [58, 54, 48], CONCRETE);
+    b.solid(
+        v3(i(0), 0, i(-15)),
+        v3(i(18), i(5), i(-5)),
+        [58, 54, 48],
+        CONCRETE,
+    );
     // the stairwell and the service corridor
     b.wall_z(i(-8), i(5), i(19), d(35), &[], CONC);
     b.wall_z(i(-4), i(5), i(15), d(35), &[], CONC);
@@ -322,11 +430,21 @@ pub fn mall() -> Mall {
 
     // things to walk round
     // the dry fountain and the raffle car's plinth in the court
-    b.solid(v3(i(73), 0, i(-12)), v3(i(77), d(6), i(-8)), [88, 92, 90], CONCRETE);
+    b.solid(
+        v3(i(73), 0, i(-12)),
+        v3(i(77), d(6), i(-8)),
+        [88, 92, 90],
+        CONCRETE,
+    );
     b.solid(v3(i(72), 0, -d(15)), v3(i(78), d(3), d(15)), [60, 30, 28], CARPET);
     // counters in the stores
     for (x, z) in [(6, 12), (20, 12), (34, 12), (48, 12), (20, -12), (34, -12)] {
-        b.solid(v3(i(x), 0, i(z)), v3(i(x) + i(4), d(10), i(z) + ONE), [96, 72, 52], WOOD);
+        b.solid(
+            v3(i(x), 0, i(z)),
+            v3(i(x) + i(4), d(10), i(z) + ONE),
+            [96, 72, 52],
+            WOOD,
+        );
     }
     // the ouija's table
     b.solid(v3(i(98), 0, -ONE), v3(i(100), d(8), ONE), [64, 40, 28], WOOD);
@@ -335,7 +453,12 @@ pub fn mall() -> Mall {
     b.solid(v3(i(43), 0, i(2)), v3(i(45), d(3), i(3)), [120, 30, 30], METAL);
     // planters
     for x in [8, 33, 57] {
-        b.solid(v3(i(x), 0, i(-4)), v3(i(x) + ONE, d(7), i(-3)), [70, 62, 50], CONCRETE);
+        b.solid(
+            v3(i(x), 0, i(-4)),
+            v3(i(x) + ONE, d(7), i(-3)),
+            [70, 62, 50],
+            CONCRETE,
+        );
     }
 
     let rooms = vec![
@@ -355,7 +478,12 @@ pub fn mall() -> Mall {
         room("stair", -80, 50, -40, 150, Reverb::Concrete, CONCRETE),
     ];
     let h = ONE * 3 / 2;
-    let p = |a: usize, b: usize, x: i32, z: i32, door: Option<usize>| Portal { a, b, at: v3(d(x), h, d(z)), door };
+    let p = |a: usize, b: usize, x: i32, z: i32, door: Option<usize>| Portal {
+        a,
+        b,
+        at: v3(d(x), h, d(z)),
+        door,
+    };
     let portals = vec![
         p(0, 1, 0, 0, None),
         p(1, 2, 300, 0, None),
@@ -401,32 +529,79 @@ pub fn mall() -> Mall {
 
     let warm = [255, 214, 160];
     let cool = [214, 232, 255];
-    let f = |kind: FixtureKind, x: i32, y: i32, z: i32, rgb: [i32; 3], power: i32, range: i32, flickers: bool| Fixture {
-        kind,
-        at: v3(d(x), d(y), d(z)),
-        rgb,
-        power: power * ONE / 100,
-        range: d(range),
-        flickers,
-    };
+    let f =
+        |kind: FixtureKind, x: i32, y: i32, z: i32, rgb: [i32; 3], power: i32, range: i32, flickers: bool| {
+            Fixture {
+                kind,
+                at: v3(d(x), d(y), d(z)),
+                rgb,
+                power: power * ONE / 100,
+                range: d(range),
+                flickers,
+            }
+        };
     let mut fixtures = Vec::new();
     for (k, x) in [40, 110, 190, 260, 340, 410, 490, 560].iter().enumerate() {
-        fixtures.push(f(FixtureKind::Pendant, *x, 46, 0, warm, 90, 110, k == 2 || k == 5));
+        fixtures.push(f(
+            FixtureKind::Pendant,
+            *x,
+            46,
+            0,
+            warm,
+            90,
+            110,
+            k == 2 || k == 5,
+        ));
     }
-    for (x, z, ok) in [(100, 100, true), (240, 100, true), (380, 100, false), (520, 100, true), (240, -100, true), (380, -100, true), (520, -100, false)] {
-        fixtures.push(f(FixtureKind::Troffer, x, 37, z, cool, if ok { 70 } else { 40 }, 90, !ok));
+    for (x, z, ok) in [
+        (100, 100, true),
+        (240, 100, true),
+        (380, 100, false),
+        (520, 100, true),
+        (240, -100, true),
+        (380, -100, true),
+        (520, -100, false),
+    ] {
+        fixtures.push(f(
+            FixtureKind::Troffer,
+            x,
+            37,
+            z,
+            cool,
+            if ok { 70 } else { 40 },
+            90,
+            !ok,
+        ));
     }
     fixtures.push(f(FixtureKind::Neon, 100, 42, 46, [255, 70, 90], 35, 50, false));
     fixtures.push(f(FixtureKind::Neon, 520, 42, 46, [255, 90, 200], 35, 50, true));
     fixtures.push(f(FixtureKind::Neon, 240, 42, -46, [90, 200, 255], 30, 50, false));
-    fixtures.push(f(FixtureKind::ExitSign, -60, 30, 45, [255, 40, 30], 18, 30, false));
+    fixtures.push(f(
+        FixtureKind::ExitSign,
+        -60,
+        30,
+        45,
+        [255, 40, 30],
+        18,
+        30,
+        false,
+    ));
     fixtures.push(f(FixtureKind::ExitSign, -75, 30, 0, [60, 255, 90], 18, 30, false));
     fixtures.push(f(FixtureKind::Lamp, -40, 32, 170, [255, 200, 150], 45, 70, true));
     fixtures.push(f(FixtureKind::Lamp, 250, 32, 170, [255, 200, 150], 45, 70, false));
     fixtures.push(f(FixtureKind::Lamp, 680, 70, -80, warm, 70, 140, false));
     fixtures.push(f(FixtureKind::Lamp, 820, 70, 80, warm, 70, 140, true));
     fixtures.push(f(FixtureKind::Candle, 990, 9, 5, [255, 170, 90], 40, 50, false));
-    fixtures.push(f(FixtureKind::Candle, 960, 12, -40, [255, 170, 90], 30, 40, false));
+    fixtures.push(f(
+        FixtureKind::Candle,
+        960,
+        12,
+        -40,
+        [255, 170, 90],
+        30,
+        40,
+        false,
+    ));
     fixtures.push(f(FixtureKind::Moon, 750, 120, 0, [140, 160, 210], 55, 260, false));
 
     let ring = v3(i(75), 0, 0);
@@ -454,7 +629,11 @@ pub fn mall() -> Mall {
         });
     }
 
-    let pr = |kind: PropKind, x: i32, z: i32, yaw: i32| Prop { kind, at: v3(d(x), 0, d(z)), yaw: crate::fx::deg(yaw) };
+    let pr = |kind: PropKind, x: i32, z: i32, yaw: i32| Prop {
+        kind,
+        at: v3(d(x), 0, d(z)),
+        yaw: crate::fx::deg(yaw),
+    };
     let props = vec![
         pr(PropKind::Mannequin, 200, 80, 180),
         pr(PropKind::Mannequin, 240, 70, 200),
@@ -475,9 +654,17 @@ pub fn mall() -> Mall {
         pr(PropKind::Directory, 20, 30, 270),
         pr(PropKind::Clock, 640, 140, 180),
     ];
-    let hides = props.iter().filter(|p| p.kind == PropKind::Booth).map(|p| p.at).collect();
+    let hides = props
+        .iter()
+        .filter(|p| p.kind == PropKind::Booth)
+        .map(|p| p.at)
+        .collect();
 
-    let s = |kind: ScareKind, x: i32, z: i32, menace: i32| ScarePoint { kind, at: v3(d(x), d(10), d(z)), menace };
+    let s = |kind: ScareKind, x: i32, z: i32, menace: i32| ScarePoint {
+        kind,
+        at: v3(d(x), d(10), d(z)),
+        menace,
+    };
     let scares = vec![
         s(ScareKind::DoorCreak, -60, 50, 0),
         s(ScareKind::Fall, 100, 120, 0),
@@ -498,7 +685,10 @@ pub fn mall() -> Mall {
         s(ScareKind::Glass, 950, -40, 4),
         s(ScareKind::Steps, 940, 30, 4),
     ];
-    let sign = |key: &'static str, x: i32, y: i32, z: i32| Sign { key, at: v3(d(x), d(y), d(z)) };
+    let sign = |key: &'static str, x: i32, y: i32, z: i32| Sign {
+        key,
+        at: v3(d(x), d(y), d(z)),
+    };
     let signs = vec![
         sign("sign_behind", 20, 22, 30),
         sign("sign_open_late", 520, 42, 46),
@@ -510,7 +700,11 @@ pub fn mall() -> Mall {
     ];
 
     Mall {
-        map: Map { brushes: b.map.brushes, spawns: vec![(v3(i(-5), 0, 0), crate::fx::deg(-90))], name: "mall" },
+        map: Map {
+            brushes: b.map.brushes,
+            spawns: vec![(v3(i(-5), 0, 0), crate::fx::deg(-90))],
+            name: "mall",
+        },
         slabs: b.slabs,
         rooms,
         portals,

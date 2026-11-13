@@ -41,7 +41,14 @@ pub struct Flashlight {
 
 impl Default for Flashlight {
     fn default() -> Flashlight {
-        Flashlight { on: true, charge: FULL, held: 0, reversals: 0, last_dx_sign: 0, shaking: false }
+        Flashlight {
+            on: true,
+            charge: FULL,
+            held: 0,
+            reversals: 0,
+            last_dx_sign: 0,
+            shaking: false,
+        }
     }
 }
 
@@ -120,7 +127,10 @@ pub struct Lights {
 impl Lights {
     pub fn new(fixtures: &[Fixture]) -> Lights {
         Lights {
-            states: fixtures.iter().map(|f| if f.flickers { State::Flicker } else { State::On }).collect(),
+            states: fixtures
+                .iter()
+                .map(|f| if f.flickers { State::Flicker } else { State::On })
+                .collect(),
             wave: None,
         }
     }
@@ -189,13 +199,21 @@ mod tests {
 
     #[test]
     fn ten_fast_reversals_add_fifteen_percent_and_slow_ones_add_nothing() {
-        let mut f = Flashlight { charge: 10 * ONE, on: false, ..Flashlight::default() };
+        let mut f = Flashlight {
+            charge: 10 * ONE,
+            on: false,
+            ..Flashlight::default()
+        };
         // the first push sets a side; each later push the other way is a reversal
         for k in 0..11 {
             f.tick(true, if k % 2 == 0 { 900 } else { -900 });
         }
         assert_eq!(f.charge, 10 * ONE + 10 * SHAKE_GAIN);
-        let mut g = Flashlight { charge: 10 * ONE, on: false, ..Flashlight::default() };
+        let mut g = Flashlight {
+            charge: 10 * ONE,
+            on: false,
+            ..Flashlight::default()
+        };
         for k in 0..11 {
             g.tick(true, if k % 2 == 0 { 300 } else { -300 });
         }
@@ -240,7 +258,11 @@ mod tests {
         l.wave = Some((0, v3(int(95), 0, 0)));
         l.advance(100_000, &m.fixtures);
         for (i, f) in m.fixtures.iter().enumerate() {
-            let want = if f.kind == FixtureKind::Moon { State::On } else { State::Broken };
+            let want = if f.kind == FixtureKind::Moon {
+                State::On
+            } else {
+                State::Broken
+            };
             assert_eq!(l.states[i], want, "{:?}", f.kind);
         }
     }

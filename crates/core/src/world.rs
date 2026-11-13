@@ -23,7 +23,7 @@ pub const SCARE_MARGIN: i32 = fx::deg(20);
 pub const LOOK_DOWN: i32 = fx::deg(-40);
 pub const PITCH_LIMIT: i32 = fx::deg(85);
 /// Mouse hundredths of a pixel to angle units, at sensitivity 100.
-pub const TURN_PER_PX: i32 = 12;
+pub const TURN_PER_PX: i32 = 20;
 /// Mouse hundredths of a pixel to hand units (`ONE` across half the view).
 pub const HAND_PER_PX: i32 = 3;
 /// How near (m) a handle, the board, a booth or the box must be to use.
@@ -81,13 +81,17 @@ pub struct Hand {
 pub const POCKET: (Fx, Fx) = (-ONE * 75 / 100, -ONE * 70 / 100);
 pub const BOX_AT: (Fx, Fx) = (-ONE * 45 / 100, -ONE * 35 / 100);
 pub const CYLINDER: (Fx, Fx) = (ONE * 20 / 100, -ONE * 15 / 100);
-pub const CHAMBER_R: Fx = ONE * 13 / 100;
+pub const CHAMBER_R: Fx = ONE * 16 / 100;
 pub const GRAB: Fx = ONE * 12 / 100;
 pub const SEAT: Fx = ONE * 8 / 100;
 /// A flick: the hand's speed across in one tick (screen units).
 pub const FLICK: Fx = ONE * 7 / 100;
 /// The ouija's letters on the board (screen units), and the pull.
-pub const LETTERS: [(Fx, Fx); 3] = [(-ONE * 45 / 100, ONE * 15 / 100), (ONE * 5 / 100, ONE * 32 / 100), (ONE * 48 / 100, ONE * 8 / 100)];
+pub const LETTERS: [(Fx, Fx); 3] = [
+    (-ONE * 45 / 100, ONE * 15 / 100),
+    (ONE * 5 / 100, ONE * 32 / 100),
+    (ONE * 48 / 100, ONE * 8 / 100),
+];
 pub const PULL: Fx = ONE * 4 / 100;
 /// Closing takes a harder flick than opening, so reaching for the box
 /// does not shut the cylinder (R2.5).
@@ -97,7 +101,10 @@ pub const NO_ANGLE: i32 = i32::MIN;
 
 pub fn chamber_at(k: usize) -> (Fx, Fx) {
     let a = (k as i32) * fx::TURN / 6 + fx::QUARTER_TURN;
-    (CYLINDER.0 + fx::mul(CHAMBER_R, fx::cos(a)), CYLINDER.1 + fx::mul(CHAMBER_R, fx::sin(a)))
+    (
+        CYLINDER.0 + fx::mul(CHAMBER_R, fx::cos(a)),
+        CYLINDER.1 + fx::mul(CHAMBER_R, fx::sin(a)),
+    )
 }
 
 fn d2((ax, ay): (Fx, Fx), (bx, by): (Fx, Fx)) -> Fx {
@@ -192,7 +199,14 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Settings {
-        Settings { output: Output::Headphones, ring: false, subtitles: false, reduce_flashes: false, sensitivity: 100, tier: 1 }
+        Settings {
+            output: Output::Headphones,
+            ring: false,
+            subtitles: false,
+            reduce_flashes: false,
+            sensitivity: 100,
+            tier: 1,
+        }
     }
 }
 
@@ -372,25 +386,50 @@ impl World {
     /// Whether the player sees `p`: in front, inside the view, nothing in
     /// the way, and not hiding.
     pub fn sees(&self, p: V3) -> bool {
-        !matches!(self.mode, Mode::Hidden(_)) && self.off_view(p) < HALF_VIEW && self.clear_line(self.eye(), p)
+        !matches!(self.mode, Mode::Hidden(_))
+            && self.off_view(p) < HALF_VIEW
+            && self.clear_line(self.eye(), p)
     }
 
     /// How `from` is heard at `to`.
     pub fn hear(&self, from: V3, to: V3) -> Heard {
         let blocked = !self.clear_line(v3(from.x, ONE, from.z), v3(to.x, ONE, to.z));
-        acoustics::hear(&self.mall.rooms, &self.mall.portals, &self.door_open, from, to, blocked)
+        acoustics::hear(
+            &self.mall.rooms,
+            &self.mall.portals,
+            &self.door_open,
+            from,
+            to,
+            blocked,
+        )
     }
 
     fn say(&mut self, recipe: &'static str, at: V3, loud: Fx, marked: Option<&'static str>) {
-        self.voices.push(Voice { recipe, at, loud, head: false, marked });
+        self.voices.push(Voice {
+            recipe,
+            at,
+            loud,
+            head: false,
+            marked,
+        });
         if let Some(key) = marked {
-            let rel = fx::wrap(yaw_of(at.sub(self.eye())) - self.yaw);
-            self.marks.push(Mark { key, angle: rel, tick: self.tick });
+            let bearing = yaw_of(at.sub(self.eye()));
+            self.marks.push(Mark {
+                key,
+                angle: bearing,
+                tick: self.tick,
+            });
         }
     }
 
     fn say_head(&mut self, recipe: &'static str, offset: V3, loud: Fx) {
-        self.voices.push(Voice { recipe, at: offset, loud, head: true, marked: None });
+        self.voices.push(Voice {
+            recipe,
+            at: offset,
+            loud,
+            head: true,
+            marked: None,
+        });
     }
 
     /// Settings and screens, from the page (`act`).
@@ -447,6 +486,11 @@ impl World {
             "clock" => {
                 let v: i32 = value.parse().map_err(|_| format!("bad clock {value}"))?;
                 self.minute_of_day = v.rem_euclid(24 * 60);
+            }
+            "settings" => {
+                // CH-Q6 A (kits/saves, settings only): text the page kept;
+                // anything unreadable leaves the defaults
+                self.settings = settings_from(value).unwrap_or(self.settings);
             }
             _ => return Err(format!("unknown action {name}")),
         }
@@ -541,8 +585,17 @@ impl World {
             return;
         }
         let origin = self.body.origin;
-        let near_hide = self.mall.hides.iter().position(|h| h.sub(origin).len_xz() < REACH);
-        let spare = self.mall.props.iter().find(|p| p.kind == PropKind::Spare).map(|p| p.at);
+        let near_hide = self
+            .mall
+            .hides
+            .iter()
+            .position(|h| h.sub(origin).len_xz() < REACH);
+        let spare = self
+            .mall
+            .props
+            .iter()
+            .find(|p| p.kind == PropKind::Spare)
+            .map(|p| p.at);
         let near_spare = !self.spare_taken && spare.map(|s| s.sub(origin).len_xz() < REACH).unwrap_or(false);
         if self.mode == Mode::Look {
             if near_spare {
@@ -571,21 +624,42 @@ impl World {
         if fresh_alt && self.mode == Mode::Look {
             let eye = self.eye();
             let door = self.mall.doors.iter().enumerate().position(|(i, d)| {
-                self.door_open[i] < ONE && d.handle.sub(eye).len() < REACH && self.off_view(d.handle) < fx::deg(35)
+                self.door_open[i] < ONE
+                    && d.handle.sub(eye).len() < REACH
+                    && self.off_view(d.handle) < fx::deg(35)
             });
-            let board = self.mall.props.iter().find(|p| p.kind == PropKind::Ouija).map(|p| p.at.add(v3(0, ONE * 8 / 10, 0)));
-            let near_board = board.map(|b| b.sub(eye).len() < REACH * 3 / 2 && self.off_view(b) < fx::deg(40)).unwrap_or(false);
+            let board = self
+                .mall
+                .props
+                .iter()
+                .find(|p| p.kind == PropKind::Ouija)
+                .map(|p| p.at.add(v3(0, ONE * 8 / 10, 0)));
+            let near_board = board
+                .map(|b| b.sub(eye).len() < REACH * 3 / 2 && self.off_view(b) < fx::deg(40))
+                .unwrap_or(false);
             if let Some(dn) = door {
                 self.mode = Mode::Door(dn);
-                self.hand = Hand { at: (0, 0), was: (0, 0), want: (0, ONE / 4) };
+                self.hand = Hand {
+                    at: (0, 0),
+                    was: (0, 0),
+                    want: (0, ONE / 4),
+                };
                 self.door_angle = NO_ANGLE;
             } else if near_board && self.letters < 3 && self.blackout.is_none() {
                 self.mode = Mode::Ouija;
-                self.hand = Hand { at: (0, -ONE / 3), was: (0, -ONE / 3), want: (0, -ONE / 3) };
+                self.hand = Hand {
+                    at: (0, -ONE / 3),
+                    was: (0, -ONE / 3),
+                    want: (0, -ONE / 3),
+                };
             } else if self.pitch < LOOK_DOWN {
                 self.mode = Mode::Reload;
                 self.loaded_now = 0;
-                self.hand = Hand { at: (ONE / 2, -ONE / 2), was: (ONE / 2, -ONE / 2), want: (ONE / 2, -ONE / 2) };
+                self.hand = Hand {
+                    at: (ONE / 2, -ONE / 2),
+                    was: (ONE / 2, -ONE / 2),
+                    want: (ONE / 2, -ONE / 2),
+                };
             }
         }
         if !alt && self.hands_busy() {
@@ -619,7 +693,10 @@ impl World {
         if self.hands_busy() {
             let k = HAND_PER_PX * s / 100;
             let w = self.hand.want;
-            self.hand.want = ((w.0 + input.dx * k).clamp(-ONE, ONE), (w.1 - input.dy * k).clamp(-ONE, ONE));
+            self.hand.want = (
+                (w.0 + input.dx * k).clamp(-ONE, ONE),
+                (w.1 - input.dy * k).clamp(-ONE, ONE),
+            );
             // Verlet: carry on as it was moving, damped, and pull toward the mouse
             let (ax, ay) = self.hand.at;
             let (px, py) = self.hand.was;
@@ -643,15 +720,26 @@ impl World {
 
     fn walk(&mut self, input: &Input) {
         let mut mover = Mover::new(&self.mall.map);
-        let sprinting = input.key(SPRINT) && input.key(FORWARD) && self.breath > 0 && !input.key(CROUCH) && !self.hands_busy();
+        let sprinting = input.key(SPRINT)
+            && input.key(FORWARD)
+            && self.breath > 0
+            && !input.key(CROUCH)
+            && !self.hands_busy();
         if sprinting {
             mover.t.run = TUNING.sprint;
             self.breath -= 1;
             if self.breath == 0 {
-                self.voices.push(Voice { recipe: "gasp", at: v3(0, -ONE / 10, -ONE / 5), loud: ONE / 2, head: true, marked: None });
+                self.voices.push(Voice {
+                    recipe: "gasp",
+                    at: v3(0, -ONE / 10, -ONE / 5),
+                    loud: ONE / 2,
+                    head: true,
+                    marked: None,
+                });
             }
         } else {
-            self.breath = (self.breath + TUNING.breath_ticks / TUNING.breath_refill_ticks.max(1) + 1).min(TUNING.breath_ticks);
+            self.breath = (self.breath + TUNING.breath_ticks / TUNING.breath_refill_ticks.max(1) + 1)
+                .min(TUNING.breath_ticks);
         }
         if self.hands_busy() {
             // loading or turning a handle: a slow shuffle
@@ -814,7 +902,13 @@ impl World {
     }
 
     fn begin_chase(&mut self) {
-        let from = self.mall.props.iter().find(|p| p.kind == PropKind::Ouija).map(|p| p.at).unwrap_or(self.mall.ring);
+        let from = self
+            .mall
+            .props
+            .iter()
+            .find(|p| p.kind == PropKind::Ouija)
+            .map(|p| p.at)
+            .unwrap_or(self.mall.ring);
         self.blackout = Some(self.tick);
         self.lights.wave = Some((self.tick + HZ, from));
         self.spirit.chasing = true;
@@ -867,12 +961,19 @@ impl World {
         };
         if let Some(pi) = self.possessed {
             let p = self.mall.props[pi];
-            let (r, h) = if p.kind == PropKind::Car { (ONE * 16 / 10, ONE * 15 / 10) } else { (ONE * 4 / 10, ONE * 19 / 10) };
+            let (r, h) = if p.kind == PropKind::Car {
+                (ONE * 16 / 10, ONE * 15 / 10)
+            } else {
+                (ONE * 4 / 10, ONE * 19 / 10)
+            };
             consider(ray_column(eye, dir, p.at, r, h), Target::Possessed);
         }
         for (i, c) in self.cultists.iter().enumerate() {
             if c.mind != Mind::Dead {
-                consider(ray_column(eye, dir, c.at, ONE * 4 / 10, ONE * 18 / 10), Target::Cultist(i));
+                consider(
+                    ray_column(eye, dir, c.at, ONE * 4 / 10, ONE * 18 / 10),
+                    Target::Cultist(i),
+                );
             }
         }
         for (i, f) in self.mall.fixtures.iter().enumerate() {
@@ -958,7 +1059,11 @@ impl World {
         if menace >= 4 && busy {
             // breath on your neck: right behind the head (journal tab 4)
             self.say_head("breath", v3(ONE / 6, 0, ONE * 3 / 10), ONE * 4 / 10);
-            self.marks.push(Mark { key: "sub_breath", angle: fx::deg(160), tick: self.tick });
+            self.marks.push(Mark {
+                key: "sub_breath",
+                angle: self.yaw + fx::deg(160),
+                tick: self.tick,
+            });
             self.flinch = ONE / 2;
             self.scare_wait = 3600 / per_minute(menace);
             return;
@@ -973,14 +1078,21 @@ impl World {
             ScareKind::Fall => {
                 self.say("fall_crash", s.at, ONE * 8 / 10, Some("sub_fall"));
                 let yaw = self.rng.below(fx::TURN as u32) as i32;
-                self.debris.push(Debris { at: v3(s.at.x, 0, s.at.z), yaw });
+                self.debris.push(Debris {
+                    at: v3(s.at.x, 0, s.at.z),
+                    yaw,
+                });
             }
             ScareKind::Shutter => self.say("shutter", s.at, ONE * 7 / 10, Some("sub_shutter")),
             ScareKind::Steps => {
                 for k in 0..3 {
                     self.pending_steps.push((self.tick + 20 + k * 22, s.at));
                 }
-                self.marks.push(Mark { key: "sub_steps", angle: fx::wrap(yaw_of(s.at.sub(eye)) - self.yaw), tick: self.tick });
+                self.marks.push(Mark {
+                    key: "sub_steps",
+                    angle: yaw_of(s.at.sub(eye)),
+                    tick: self.tick,
+                });
             }
             ScareKind::Laugh => self.say("laugh", s.at, ONE * 5 / 10, Some("sub_laugh")),
             ScareKind::Glass => {
@@ -990,7 +1102,10 @@ impl World {
                     .fixtures
                     .iter()
                     .enumerate()
-                    .filter(|(i, f)| f.at.sub(s.at).len() < int(8) && self.lights.states[*i] != crate::lights::State::Broken)
+                    .filter(|(i, f)| {
+                        f.at.sub(s.at).len() < int(8)
+                            && self.lights.states[*i] != crate::lights::State::Broken
+                    })
                     .map(|(i, _)| i)
                     .next();
                 if let Some(i) = near {
@@ -1008,8 +1123,7 @@ impl World {
                 .mall
                 .props
                 .iter_mut()
-                .filter(|m| m.kind == PropKind::Mannequin && off_view(yaw, pitch, eye2, m.at) > HALF_VIEW)
-                .next()
+                .find(|m| m.kind == PropKind::Mannequin && off_view(yaw, pitch, eye2, m.at) > HALF_VIEW)
             {
                 m.yaw = yaw_of(p.sub(m.at));
             }
@@ -1019,7 +1133,12 @@ impl World {
 
     fn steps_due(&mut self) {
         let now = self.tick;
-        let due: Vec<V3> = self.pending_steps.iter().filter(|(t, _)| *t == now).map(|(_, p)| *p).collect();
+        let due: Vec<V3> = self
+            .pending_steps
+            .iter()
+            .filter(|(t, _)| *t == now)
+            .map(|(_, p)| *p)
+            .collect();
         self.pending_steps.retain(|(t, _)| *t > now);
         for p in due {
             self.say("step_other", p, ONE * 6 / 10, None);
@@ -1056,7 +1175,11 @@ impl World {
                 self.possessed = Some(pi);
                 self.was_seen = true;
                 let at = self.mall.props[pi].at.add(v3(0, ONE, 0));
-                let (recipe, sub) = if Some(pi) == car { ("horn", "sub_horn") } else { ("plastic_knock", "sub_knock") };
+                let (recipe, sub) = if Some(pi) == car {
+                    ("horn", "sub_horn")
+                } else {
+                    ("plastic_knock", "sub_knock")
+                };
                 self.say(recipe, at, ONE * 7 / 10, Some(sub));
             }
             self.possess_wait = 20 * HZ as i32;
@@ -1085,7 +1208,11 @@ impl World {
             self.say("plastic_knock", knock, ONE * 4 / 10, None);
         }
         self.was_seen = seen;
-        let reach = if p.kind == PropKind::Car { ONE * 25 / 10 } else { ONE * 13 / 10 };
+        let reach = if p.kind == PropKind::Car {
+            ONE * 25 / 10
+        } else {
+            ONE * 13 / 10
+        };
         if dist < reach && !matches!(self.mode, Mode::Hidden(_)) {
             self.harm("sub_grab");
             self.possessed = None;
@@ -1104,7 +1231,11 @@ impl World {
         self.hurt = HZ as i32;
         self.flinch = ONE;
         self.say_head("hit", v3(0, 0, -ONE / 3), ONE);
-        self.marks.push(Mark { key, angle: 0, tick: self.tick });
+        self.marks.push(Mark {
+            key,
+            angle: self.yaw,
+            tick: self.tick,
+        });
     }
 
     fn cult(&mut self) {
@@ -1141,7 +1272,11 @@ impl World {
                     let away = v3(c.at.x - self.spirit.at.x, 0, c.at.z - self.spirit.at.z);
                     let l = away.len_xz().max(1);
                     let step = ONE * 3 / HZ as i32;
-                    let next = c.at.add(v3(fx::div(fx::mul(away.x, step), l), 0, fx::div(fx::mul(away.z, step), l)));
+                    let next = c.at.add(v3(
+                        fx::div(fx::mul(away.x, step), l),
+                        0,
+                        fx::div(fx::mul(away.z, step), l),
+                    ));
                     if self.mall.rooms[10].holds(next) {
                         c.at = next;
                     }
@@ -1157,9 +1292,9 @@ impl World {
                     if c.quiet > 8 * HZ as i32 {
                         c.suspicion = fx::approach(c.suspicion, 0, ONE / 120);
                     }
-                    c.mind = if c.mind == Mind::Attack && c.quiet < 8 * HZ as i32 {
-                        Mind::Attack
-                    } else if c.suspicion >= ONE && sight > ONE / 12 && dist < int(14) {
+                    let keeps_attacking = c.mind == Mind::Attack && c.quiet < 8 * HZ as i32;
+                    let starts_attacking = c.suspicion >= ONE && sight > ONE / 12 && dist < int(14);
+                    c.mind = if keeps_attacking || starts_attacking {
                         Mind::Attack
                     } else if c.suspicion >= ONE {
                         Mind::Search
@@ -1176,21 +1311,38 @@ impl World {
                             if c.patrol {
                                 c.angle = (c.angle + fx::TURN / (HZ as i32 * 40)) % fx::TURN;
                                 let r = int(11);
-                                (self.mall.ring.add(v3(fx::mul(r, fx::cos(c.angle)), 0, fx::mul(r, fx::sin(c.angle)))), ONE)
+                                (
+                                    self.mall.ring.add(v3(
+                                        fx::mul(r, fx::cos(c.angle)),
+                                        0,
+                                        fx::mul(r, fx::sin(c.angle)),
+                                    )),
+                                    ONE,
+                                )
                             } else {
                                 (c.post, ONE)
                             }
                         }
                     };
-                    if c.mind == Mind::Look || (c.mind == Mind::Chant && !c.patrol && c.at.sub(c.post).len_xz() < ONE / 4) {
-                        let target = if c.mind == Mind::Look { c.goal } else { self.mall.ring };
+                    if c.mind == Mind::Look
+                        || (c.mind == Mind::Chant && !c.patrol && c.at.sub(c.post).len_xz() < ONE / 4)
+                    {
+                        let target = if c.mind == Mind::Look {
+                            c.goal
+                        } else {
+                            self.mall.ring
+                        };
                         c.yaw = turn_toward(c.yaw, yaw_of(target.sub(c.at)), fx::deg(3));
                     } else {
                         let way = v3(goal.x - c.at.x, 0, goal.z - c.at.z);
                         let l = way.len_xz();
                         if l > ONE / 2 && speed > 0 {
                             let step = speed / HZ as i32;
-                            let next = c.at.add(v3(fx::div(fx::mul(way.x, step), l), 0, fx::div(fx::mul(way.z, step), l)));
+                            let next = c.at.add(v3(
+                                fx::div(fx::mul(way.x, step), l),
+                                0,
+                                fx::div(fx::mul(way.z, step), l),
+                            ));
                             c.at = next;
                             c.yaw = turn_toward(c.yaw, yaw_of(way), fx::deg(6));
                         }
@@ -1246,7 +1398,11 @@ impl World {
             // glimpses at the edge of the view (menace 3 and 4)
             self.spirit.glimpse = (self.spirit.glimpse - 1).max(0);
             if self.menace() >= 3 && self.spirit.glimpse == 0 && self.rng.chance(1, 900) {
-                let side = if self.rng.chance(1, 2) { fx::deg(55) } else { -fx::deg(55) };
+                let side = if self.rng.chance(1, 2) {
+                    fx::deg(55)
+                } else {
+                    -fx::deg(55)
+                };
                 let dir = facing(self.yaw + side, 0);
                 self.spirit.at = self.body.origin.add(dir.scale(int(7)));
                 self.spirit.glimpse = 20;
@@ -1297,7 +1453,11 @@ impl World {
         let speed = if lost { ONE * 12 / 10 } else { ONE * 36 / 10 };
         if l > ONE / 4 {
             let step = speed / HZ as i32;
-            s.at = s.at.add(v3(fx::div(fx::mul(way.x, step), l), 0, fx::div(fx::mul(way.z, step), l)));
+            s.at = s.at.add(v3(
+                fx::div(fx::mul(way.x, step), l),
+                0,
+                fx::div(fx::mul(way.z, step), l),
+            ));
         } else if lost {
             // searching: on to a scare point near where it last knew you
             let k = self.rng.below(self.mall.scares.len() as u32) as usize;
@@ -1366,6 +1526,46 @@ impl World {
             }
         }
     }
+}
+
+/// The settings as the text the page keeps (CH-Q6 A): version first, so a
+/// later build can read an older one.
+pub fn settings_text(s: &Settings) -> String {
+    let out = match s.output {
+        Output::Headphones => "headphones",
+        Output::Speakers => "speakers",
+        Output::Mono => "mono",
+    };
+    serde_json::json!({
+        "version": 1,
+        "output": out,
+        "ring": s.ring,
+        "subtitles": s.subtitles,
+        "reduce_flashes": s.reduce_flashes,
+        "sensitivity": s.sensitivity,
+        "tier": s.tier,
+    })
+    .to_string()
+}
+
+pub fn settings_from(text: &str) -> Option<Settings> {
+    let v: serde_json::Value = serde_json::from_str(text).ok()?;
+    if v.get("version")?.as_i64()? != 1 {
+        return None;
+    }
+    let output = match v.get("output")?.as_str()? {
+        "speakers" => Output::Speakers,
+        "mono" => Output::Mono,
+        _ => Output::Headphones,
+    };
+    Some(Settings {
+        output,
+        ring: v.get("ring")?.as_bool()?,
+        subtitles: v.get("subtitles")?.as_bool()?,
+        reduce_flashes: v.get("reduce_flashes")?.as_bool()?,
+        sensitivity: (v.get("sensitivity")?.as_i64()? as i32).clamp(20, 300),
+        tier: (v.get("tier")?.as_i64()? as i32).clamp(0, 2),
+    })
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

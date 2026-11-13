@@ -18,7 +18,11 @@ use std::path::{Path, PathBuf};
 use tool_core::glossary;
 
 /// (file name, word, reason): a ruled-out word that is right in one file.
-const ALLOWED: &[(&str, &str, &str)] = &[];
+const ALLOWED: &[(&str, &str, &str)] = &[(
+    "data/strings.json.sign_behind",
+    "!",
+    "the mall's sign shouts, in the person's own words from the brief (\"signs that say behind you!\"); R3.1",
+)];
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("..").join("..")

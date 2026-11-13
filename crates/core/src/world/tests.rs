@@ -14,14 +14,25 @@ fn playing() -> World {
 }
 
 fn keys(k: u32) -> Input {
-    Input { keys: k, ..Input::default() }
+    Input {
+        keys: k,
+        ..Input::default()
+    }
 }
 
 fn flat() -> Map {
     Map {
         brushes: vec![
-            block(v3(int(-50), -ONE, int(-50)), v3(int(50), 0, int(50)), Surface::Floor),
-            block(v3(int(3), 0, int(-50)), v3(int(4), int(10), int(50)), Surface::Wall),
+            block(
+                v3(int(-50), -ONE, int(-50)),
+                v3(int(50), 0, int(50)),
+                Surface::Floor,
+            ),
+            block(
+                v3(int(3), 0, int(-50)),
+                v3(int(4), int(10), int(50)),
+                Surface::Wall,
+            ),
         ],
         ..Map::default()
     }
@@ -43,7 +54,11 @@ fn walking_reaches_one_point_three_metres_a_second_and_no_more() {
     let map = flat();
     let mut b = Body::at(V3::ZERO);
     run_body(&map, &mut b, keys(FORWARD), 120, 0);
-    assert!(near(b.speed(), ONE * 13 / 10, ONE / 100), "{}", fx::decimal(b.speed(), 3));
+    assert!(
+        near(b.speed(), ONE * 13 / 10, ONE / 100),
+        "{}",
+        fx::decimal(b.speed(), 3)
+    );
 }
 
 #[test]
@@ -52,7 +67,11 @@ fn crouch_walks_at_forty_percent() {
     let map = flat();
     let mut b = Body::at(V3::ZERO);
     run_body(&map, &mut b, keys(FORWARD | CROUCH), 120, 0);
-    assert!(near(b.speed(), ONE * 52 / 100, ONE / 100), "{}", fx::decimal(b.speed(), 3));
+    assert!(
+        near(b.speed(), ONE * 52 / 100, ONE / 100),
+        "{}",
+        fx::decimal(b.speed(), 3)
+    );
 }
 
 #[test]
@@ -102,7 +121,12 @@ fn strafing_in_the_air_gains_no_speed() {
         yaw += fx::deg(3);
         m.tick(&mut b, &keys(LEFT), from, yaw);
     }
-    assert!(b.speed() <= start + ONE / 50, "{} > {}", fx::decimal(b.speed(), 3), fx::decimal(start, 3));
+    assert!(
+        b.speed() <= start + ONE / 50,
+        "{} > {}",
+        fx::decimal(b.speed(), 3),
+        fx::decimal(start, 3)
+    );
 }
 
 #[test]
@@ -160,7 +184,10 @@ fn a_scare_spot_is_never_inside_the_view_at_any_yaw_or_pitch() {
             for s in &w.mall.scares {
                 if scare_spot_ok(yaw, pitch, eye, s.at) {
                     allowed += 1;
-                    assert!(off_view(yaw, pitch, eye, s.at) >= fx::deg(78), "{yaw_deg} {pitch_deg}");
+                    assert!(
+                        off_view(yaw, pitch, eye, s.at) >= fx::deg(78),
+                        "{yaw_deg} {pitch_deg}"
+                    );
                 }
             }
         }
@@ -174,7 +201,11 @@ fn off_view_is_zero_ahead_and_a_half_turn_behind() {
     // yaw 0 faces −z
     assert!(off_view(0, 0, eye, v3(0, 0, int(-5))) < fx::deg(1));
     assert!(off_view(0, 0, eye, v3(0, 0, int(5))) > fx::deg(179));
-    assert!(near(off_view(0, 0, eye, v3(int(5), 0, 0)), fx::deg(90), fx::deg(1)));
+    assert!(near(
+        off_view(0, 0, eye, v3(int(5), 0, 0)),
+        fx::deg(90),
+        fx::deg(1)
+    ));
 }
 
 #[test]
@@ -205,10 +236,18 @@ fn with_the_hands_out_the_mouse_moves_the_hand_and_not_the_view() {
     let mut w = playing();
     w.pitch = fx::deg(-60);
     let yaw = w.yaw;
-    w.tick(&Input { buttons: ALT, ..Input::default() });
+    w.tick(&Input {
+        buttons: ALT,
+        ..Input::default()
+    });
     assert_eq!(w.mode, Mode::Reload);
     let hand = w.hand.at;
-    w.tick(&Input { buttons: ALT, dx: 3000, dy: 0, ..Input::default() });
+    w.tick(&Input {
+        buttons: ALT,
+        dx: 3000,
+        dy: 0,
+        ..Input::default()
+    });
     assert_eq!((w.yaw, w.pitch), (yaw, fx::deg(-60)));
     assert!(w.hand.at.0 > hand.0);
 }
@@ -219,7 +258,12 @@ fn hand_to(w: &mut World, to: (Fx, Fx)) {
         let k = HAND_PER_PX * w.settings.sensitivity / 100;
         let dx = (to.0 - w.hand.want.0) / k;
         let dy = -(to.1 - w.hand.want.1) / k;
-        w.tick(&Input { buttons: ALT, dx, dy, ..Input::default() });
+        w.tick(&Input {
+            buttons: ALT,
+            dx,
+            dy,
+            ..Input::default()
+        });
     }
 }
 
@@ -227,11 +271,21 @@ fn hand_to(w: &mut World, to: (Fx, Fx)) {
 fn a_reload_takes_open_box_round_chamber_and_close() {
     let mut w = playing();
     w.pitch = fx::deg(-60);
-    w.tick(&Input { buttons: ALT, ..Input::default() });
+    w.tick(&Input {
+        buttons: ALT,
+        ..Input::default()
+    });
     assert!(!w.revolver.open);
     // a flick left opens the cylinder
-    w.tick(&Input { buttons: ALT, dx: -6000, ..Input::default() });
-    w.tick(&Input { buttons: ALT, ..Input::default() });
+    w.tick(&Input {
+        buttons: ALT,
+        dx: -6000,
+        ..Input::default()
+    });
+    w.tick(&Input {
+        buttons: ALT,
+        ..Input::default()
+    });
     assert!(w.revolver.open, "{:?}", w.hand);
     hand_to(&mut w, POCKET);
     assert!(w.revolver.box_out);
@@ -243,8 +297,15 @@ fn a_reload_takes_open_box_round_chamber_and_close() {
     assert!(w.armed, "the first round arms the director");
     // back from the cylinder, then a flick right closes it
     hand_to(&mut w, (-ONE / 2, 0));
-    w.tick(&Input { buttons: ALT, dx: 20_000, ..Input::default() });
-    w.tick(&Input { buttons: ALT, ..Input::default() });
+    w.tick(&Input {
+        buttons: ALT,
+        dx: 20_000,
+        ..Input::default()
+    });
+    w.tick(&Input {
+        buttons: ALT,
+        ..Input::default()
+    });
     assert!(!w.revolver.open);
 }
 
@@ -256,7 +317,10 @@ fn a_door_opens_after_its_turns_and_not_before() {
     w.body.origin = v3(d.handle.x, 0, d.handle.z - ONE);
     w.yaw = yaw_of(d.handle.sub(w.body.origin));
     w.pitch = fx::deg(-15);
-    w.tick(&Input { buttons: ALT, ..Input::default() });
+    w.tick(&Input {
+        buttons: ALT,
+        ..Input::default()
+    });
     assert_eq!(w.mode, Mode::Door(dn));
     // circles of the hand: a twelfth of a turn a step
     let mut steps = 0;
@@ -298,7 +362,11 @@ fn a_crouching_player_in_the_dark_passes_a_cultist_a_lit_walker_does_not() {
     for _ in 0..300 {
         v.cult();
     }
-    assert!(matches!(v.cultists[0].mind, Mind::Attack | Mind::Search), "{:?}", v.cultists[0].mind);
+    assert!(
+        matches!(v.cultists[0].mind, Mind::Attack | Mind::Search),
+        "{:?}",
+        v.cultists[0].mind
+    );
 }
 
 #[test]
@@ -317,13 +385,16 @@ fn a_shot_cultist_falls() {
 fn spelling_r_u_n_breaks_the_lights_and_starts_the_chase() {
     let mut w = playing();
     w.mode = Mode::Ouija;
-    for k in 0..3 {
-        w.hand.at = LETTERS[k];
+    for letter in LETTERS {
+        w.hand.at = letter;
         w.ouija();
     }
     assert!(w.spirit.chasing);
     assert!(w.blackout.is_some());
-    assert!(w.cultists.iter().all(|c| c.mind == Mind::Flee || c.mind == Mind::Dead));
+    assert!(w
+        .cultists
+        .iter()
+        .all(|c| c.mind == Mind::Flee || c.mind == Mind::Dead));
 }
 
 #[test]
@@ -350,7 +421,11 @@ fn the_same_seed_and_inputs_give_the_same_run() {
     let script = |w: &mut World| {
         for t in 0..600 {
             let k = if t % 200 < 100 { FORWARD } else { BACK };
-            w.tick(&Input { keys: k, dx: 37, ..Input::default() });
+            w.tick(&Input {
+                keys: k,
+                dx: 37,
+                ..Input::default()
+            });
         }
     };
     let mut a = playing();
@@ -362,4 +437,18 @@ fn the_same_seed_and_inputs_give_the_same_run() {
     assert_eq!(a.body, b.body);
     assert_eq!(a.debris, b.debris);
     assert_eq!(a.rng.next_u64(), b.rng.next_u64());
+}
+
+#[test]
+fn settings_kept_as_text_come_back_and_bad_text_leaves_the_defaults() {
+    let mut w = playing();
+    w.act("output", "mono").unwrap();
+    w.act("sensitivity", "160").unwrap();
+    let kept = settings_text(&w.settings);
+    let mut v = playing();
+    v.act("settings", &kept).unwrap();
+    assert_eq!(v.settings, w.settings);
+    let mut u = playing();
+    u.act("settings", "not json").unwrap();
+    assert_eq!(u.settings, Settings::default());
 }

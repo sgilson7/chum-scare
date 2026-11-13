@@ -13,3 +13,49 @@ Where slush comes out. Each line has up to {line.spouts} spouts.
 
 Not: tap, dispenser, nozzle
 -->
+
+### Box
+
+The box of rounds in your pocket; taken out with the hand during a reload.
+
+Not: magazine, clip
+
+### Chamber
+
+One of the six holes in the cylinder; each is empty, holds a round, or holds a spent case.
+
+### Cultist
+
+One of the robed figures chanting in the centre court. They see, hear, search and attack, and a shot drops one.
+
+### Cylinder
+
+The part of the revolver that swings out to load and holds the six chambers.
+
+Not: barrel, magazine
+
+### Flashlight
+
+The light in your left hand. It runs down; holding F and shaking the mouse charges it.
+
+Not: torch
+
+### Hiding place
+
+A booth or locker you can step into with E; the spirit passes you there unless it saw you go in.
+
+### Possession
+
+The spirit inside a mannequin or the raffle car. A possessed thing moves only while you are not looking, and one hit drives the spirit out.
+
+### Round
+
+One cartridge for the revolver.
+
+Not: bullet, ammo
+
+### Spirit
+
+The evil spirit that haunts the mall; it grows and hunts you after the ouija board answers.
+
+Not: ghost, monster

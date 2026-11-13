@@ -127,7 +127,8 @@ def builder_home():
     env = os.environ.get("BUILDER_HOME")
     if env and (Path(env) / "BUILDER-SPEC.md").exists():
         return Path(env).resolve()
-    for cand in (ROOT.parent, ROOT.parent.parent, ROOT.parent / "builder"):
+    # R1.12: this project keeps Builder inside it, as builder/
+    for cand in (ROOT.parent, ROOT.parent.parent, ROOT.parent / "builder", ROOT / "builder"):
         if (cand / "BUILDER-SPEC.md").exists() and (cand / "template").is_dir() and (cand / "docs").is_dir():
             return cand.resolve()
     return None
