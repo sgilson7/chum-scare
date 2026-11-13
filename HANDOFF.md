@@ -2,7 +2,7 @@
 
 Stage 9, written by the agent. `C5 Consolidate in your own words`. A fresh session starts from this file, not from memory.
 
-Commit: 7cf3a34
+Commit: c7e5db5
 
 ## What this is
 
@@ -69,3 +69,4 @@ Chum Scare: a first-person horror game in a desktop browser, built on Chumontill
 | 2026-11-13 11:47 | 9db705ea | 335 | 154k (call 38) | 552k | 278k | 1 | 92.2M | 39% |
 | 2026-11-13 15:32 | 9db705ea | 464 | 154k (call 38) | 552k | 272k | 2 | 124.9M | 37% |
 | 2026-11-13 16:02 | 9db705ea | 539 | 154k (call 38) | 552k | 267k | 2 | 142.7M | 34% |
+| 2026-11-13 16:23 | 9db705ea | 571 | 154k (call 38) | 552k | 269k | 2 | 152.5M | 34% |
