@@ -1067,12 +1067,7 @@ impl World {
     /// shots, the dynamo.
     fn noise(&mut self, at: V3, loud: Fx) {
         let n = self.cultists.len();
-        // T14: in the sudden dark they call to each other and hear nothing
-        let deaf = self.dazzled > 0;
         for i in 0..n {
-            if deaf {
-                break;
-            }
             let c = self.cultists[i];
             if c.mind == Mind::Dead || c.mind == Mind::Flee {
                 continue;
@@ -1338,7 +1333,10 @@ impl World {
         // the last scare: walking deeper shortens it (CH-Q26)
         let wait = 3600 / per_minute(menace) as i64;
         self.scare_wait = (self.last_scare + wait - self.tick).clamp(0, wait) as i32;
-        if !self.armed || self.scare_wait > 0 || self.spirit.chasing {
+        // T20: awake once you are past the doors, loaded or not (it used
+        // to wait for the first round, and a player who never loaded met
+        // no scare at all)
+        if !(self.armed || menace >= 1) || self.scare_wait > 0 || self.spirit.chasing {
             return;
         }
         let busy = self.hands_busy();
@@ -1346,7 +1344,9 @@ impl World {
         let per = if busy {
             40 + menace * 25 + self.loaded_now * 20
         } else if menace >= 1 {
-            4 + menace * 3
+            // T20: about one in seven seconds once the wait is over (was
+            // one in twenty-four)
+            15 + menace * 8
         } else {
             0
         };
@@ -1830,7 +1830,8 @@ impl World {
         };
         let off = GLIMPSE_NEAR + self.rng.below((GLIMPSE_FAR - GLIMPSE_NEAR) as u32) as i32;
         let side = if self.rng.chance(1, 2) { off } else { -off };
-        let dist = int(4) + self.rng.below(int(4) as u32) as i32;
+        // T20: nearer (was 4 to 8 m)
+        let dist = ONE * 25 / 10 + self.rng.below(int(3) as u32) as i32;
         if let Some(at) = self.apparition_spot(kind, side, dist) {
             self.apparition = Some(Apparition {
                 kind,
@@ -1850,7 +1851,7 @@ impl World {
         let dir = facing(self.yaw + side, 0);
         let eye = self.eye();
         let mut d = dist;
-        while d >= int(3) {
+        while d >= ONE * 2 {
             let at = self.body.origin.add(dir.scale(d)).add(v3(0, kind.height(), 0));
             let mut sc = Scratch::default();
             let half = v3(ONE / 5, ONE / 5, ONE / 5);
@@ -2051,13 +2052,10 @@ impl World {
                 if self.body.ducked {
                     s /= 2;
                 }
-                // too dim or far to make out: nothing; and nothing at all
-                // while their eyes are still lost in the sudden dark (T14)
-                sight = if s < NOTICE_FLOOR || self.dazzled > 0 {
-                    0
-                } else {
-                    s
-                };
+                // nothing at all while their eyes are lost in the sudden
+                // dark (T14); T20: no floor below which you are a shadow,
+                // the dark court does that now
+                sight = if self.dazzled > 0 { 0 } else { s };
             }
             match c.mind {
                 Mind::Flee => {
@@ -2320,33 +2318,54 @@ impl World {
 
     /// The next point toward `goal` through the portals (the spirit's way).
     fn next_waypoint(&self, from: V3, goal: V3) -> V3 {
-        let all_open: Vec<Fx> = vec![ONE; self.mall.doors.len()];
-        let h = acoustics::hear(&self.mall.rooms, &self.mall.portals, &all_open, goal, from, false);
-        let a = self.mall.room_of(from);
-        let b = self.mall.room_of(goal);
+        // T21: by the fewest rooms (breadth first, as the cultists go, T8),
+        // through shut doors too; it used to guess the doorway from where
+        // the sound seemed to come from, and could pick one that led
+        // nowhere, or the one it stood on, again and again
+        let (a, b) = (self.mall.room_of(from), self.mall.room_of(goal));
         if a == b {
             return goal;
         }
-        // the apparent place of the goal heard from here lies through the
-        // first portal on the way: walk to that portal
-        let toward = h.apparent;
-        let mut best = goal;
-        let mut low = i32::MAX;
-        for p in &self.mall.portals {
-            // T19: not the doorway it stands on: there it may count itself
-            // in either room, pick the same doorway again and never leave
-            if p.at.sub(from).len_xz() < ONE / 2 {
-                continue;
-            }
-            if p.a == a || p.b == a {
-                let dd = p.at.sub(toward).len_xz() + p.at.sub(from).len_xz() / 4;
-                if dd < low {
-                    low = dd;
-                    best = p.at;
+        let n = self.mall.rooms.len();
+        let mut next: Vec<Option<usize>> = vec![None; n];
+        let mut seen = vec![false; n];
+        let mut queue = std::collections::VecDeque::from([b]);
+        seen[b] = true;
+        while let Some(r) = queue.pop_front() {
+            for (pi, p) in self.mall.portals.iter().enumerate() {
+                let other = if p.a == r {
+                    p.b
+                } else if p.b == r {
+                    p.a
+                } else {
+                    continue;
+                };
+                if !seen[other] {
+                    seen[other] = true;
+                    next[other] = Some(pi);
+                    queue.push_back(other);
                 }
             }
         }
-        best
+        let Some(pi) = next[a] else {
+            return goal;
+        };
+        let p = self.mall.portals[pi];
+        let door = v3(p.at.x, 0, p.at.z);
+        // on the doorway itself: on into the room beyond, toward the next
+        // doorway there or the goal
+        if door.sub(v3(from.x, 0, from.z)).len_xz() < ONE / 2 {
+            let beyond = if p.a == a { p.b } else { p.a };
+            if beyond == b {
+                return goal;
+            }
+            if let Some(qi) = next[beyond] {
+                let q = self.mall.portals[qi].at;
+                return v3(q.x, 0, q.z);
+            }
+            return goal;
+        }
+        door
     }
 
     fn outcome(&mut self) {
@@ -2422,12 +2441,9 @@ enum Target {
 }
 
 pub fn per_minute(menace: i32) -> i32 {
-    [1, 2, 3, 3, 4][menace.clamp(0, 4) as usize]
+    // T20: more past the doors (were 1, 2, 3, 3, 4)
+    [1, 3, 4, 5, 6][menace.clamp(0, 4) as usize]
 }
-
-/// The least a cultist can make out (T6): crouched with the light off, a
-/// few metres off in lamplight, you are a shadow.
-pub const NOTICE_FLOOR: Fx = ONE / 30;
 
 /// Suspicion grows by sight ÷ this a tick (was 20, T9): a lit walker
 /// gets about eight seconds from the first mutter to the attack.
@@ -2483,7 +2499,7 @@ pub const SPEED_RAMP: i32 = 20 * HZ as i32;
 pub const GROW_TICKS: i32 = 90 * HZ as i32;
 
 /// T16: the most the eye brightens the dark
-pub const EXPOSURE_DARK: Fx = ONE * 105 / 100;
+pub const EXPOSURE_DARK: Fx = ONE;
 
 /// T18: an apparition goes once it is this near the middle of the view
 /// ("looked at"), once you are this near, or after a minute; it keeps
@@ -2496,8 +2512,8 @@ pub const APPARITION_NEAREST: Fx = 2 * ONE;
 pub const APPARITION_LIFE: i32 = 60 * HZ as i32;
 pub const SCREEN_EDGE: i32 = fx::deg(51);
 pub const FADE_TICKS: i32 = 6;
-pub const APPARITION_WAIT: i32 = 25 * HZ as i32;
-pub const APPARITION_CHANCE: u32 = 600;
+pub const APPARITION_WAIT: i32 = 15 * HZ as i32;
+pub const APPARITION_CHANCE: u32 = 300;
 
 /// T17: how long the room's sounds hush after a director scare, and how
 /// low they go

@@ -24,9 +24,9 @@ pub const FAR: Fx = 120 * ONE;
 /// the blackout (were 1/45 and 1/90: the shader's curve made them a grey
 /// floor), the colour distance fades to (was 1/100), and how much brighter
 /// every fixture draws than its power, so lit places stand out
-pub const AMBIENT: Fx = ONE / 250;
-pub const AMBIENT_AFTER: Fx = ONE / 400;
-pub const FOG: Fx = ONE / 600;
+pub const AMBIENT: Fx = ONE / 700;
+pub const AMBIENT_AFTER: Fx = ONE / 1000;
+pub const FOG: Fx = ONE / 2000;
 pub const LAMP_GAIN: Fx = ONE * 3 / 2;
 
 fn push(out: &mut Vec<i32>, a: Affine, rgb: [i32; 3], material: i32, glow: Fx) {
@@ -547,11 +547,13 @@ fn girl(out: &mut Vec<i32>, p: V3, yaw: i32) {
 /// T18: an apparition, facing `toward` (local −z faces you). Each glows a
 /// little, so the dark does not hide it; it dims as it goes.
 fn apparition(out: &mut Vec<i32>, a: &crate::world::Apparition, toward: i32) {
-    let f = at_yaw(a.at, toward);
+    // T20: half as large again and twice as bright as first drawn, to be
+    // caught in the corner of the eye
+    let f = at_yaw(a.at, toward).then(&Affine::scale(v3(ONE * 3 / 2, ONE * 3 / 2, ONE * 3 / 2)));
     let dim = if a.fading > 0 {
-        a.fading * ONE / crate::world::FADE_TICKS
+        a.fading * ONE * 2 / crate::world::FADE_TICKS
     } else {
-        ONE
+        ONE * 2
     };
     match a.kind {
         Sight::Eyes => {

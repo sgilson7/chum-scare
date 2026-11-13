@@ -63,6 +63,10 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R10.1 | divergence | T17: "too often" for the footsteps | Your next message kept them | Of six footstep points two became knocks; the two I first turned into whispers are footsteps again, and two whisper points are new. The director already spreads kinds evenly (CH-Q23), so more kinds means fewer footsteps | `mall.rs` scares | done |
 | R10.2 | divergence | T18: "a smiling mouth, a pair of eyes, hands reaching towards you" | They need to be seen in the dark | They glow faintly; they stand where the eye can see them and clear of walls; they move only while off the screen. Stand-in boxes, to the Blender list (R1.6) | `World::apparitions`, `view::apparition` | done |
 | R10.3 | finding | R9.5 said the spirit leaves the store fine | It does when you are in the court; my test never put you two rooms on. Then it sat on the doorway, as you saw. The doorway fix I reverted was right | Doorway fix back, with a test that carries you out through the wing; and it follows your trail where it last saw you | `World::next_waypoint`; `the_spirit_follows_you_out_through_every_doorway` | done |
+| R11.1 | finding | The director scares you while you walk the mall (journal tab 2) | It woke only once a round was loaded (`armed`): a player who never loaded met no director scare in the whole run | Wakes at menace 1 too; `past_the_doors_the_director_scares_you_loaded_or_not` | `World::director` | done |
+| R11.2 | divergence | T20: the court "should be the darkest room" | The fuse box (T14) cut the court's lamps, which are gone | The ring's candles are electric and run from the fuse box: throw it and the ring goes black. In the dark court a light-off player is not seen, so the breaker matters when your light is on; the cult's deafness in the sudden dark and `NOTICE_FLOOR` no longer changed any test's outcome and were taken out | `mall::breaker_feeds`; `with_the_breaker_thrown_…` | done |
+| R11.3 | divergence | T20: darker | Numbers chosen, not measured on a screen | Ambient 1/700, fog 1/2000, no brightening of the dark; yours to judge (R9.6) | `view::AMBIENT`, `FOG`; `world::EXPOSURE_DARK` | done |
+| R11.4 | finding | T19 fixed the stuck spirit | My route test carried you only by the wing; the spirit's way of choosing doorways (by where your sound seemed to come from) can lead it into a doorway that goes nowhere | Rewritten to the fewest rooms; tested on four ways out through stores | `World::next_waypoint`; `the_spirit_never_stalls_…`, `the_spirit_takes_the_fewest_rooms` | done |
 
 ## Strings written by the agent
 
@@ -91,7 +95,7 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | `sub_squeak` | A toy squeaks |
 | `sub_ring` | A telephone rings |
 | `sub_music` | A music box plays |
-| `prompt_breaker` | E: throw the breaker. The court goes dark. |
+| `prompt_breaker` | E: throw the breaker. The candles go out. |
 | `sub_breaker` | A breaker clunks back on |
 | `sub_knock_wall` | Three knocks on a wall |
 | `sub_whisper` | A whisper |

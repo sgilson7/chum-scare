@@ -652,10 +652,9 @@ pub fn mall() -> Mall {
     fixtures.push(f(FixtureKind::ExitSign, -75, 30, 0, [60, 255, 90], 18, 30, false));
     fixtures.push(f(FixtureKind::Lamp, -40, 32, 170, [255, 200, 150], 45, 70, true));
     fixtures.push(f(FixtureKind::Lamp, 250, 32, 170, [255, 200, 150], 45, 70, false));
-    fixtures.push(f(FixtureKind::Lamp, 680, 70, -80, warm, 70, 140, false));
-    // T6: the flickering lamp hangs over the cult's side (was x 82, z 8):
-    // the cursed door stands in moonlight only
-    fixtures.push(f(FixtureKind::Lamp, 840, 70, -120, warm, 70, 140, true));
+    // T20: the court is the darkest room: no lamps and no moonlight (were
+    // lamps at (68, −8) and (84, −12) and the moon over the middle); only
+    // the ring's candles
     fixtures.push(f(FixtureKind::Candle, 990, 9, 5, [255, 170, 90], 40, 50, false));
     fixtures.push(f(
         FixtureKind::Candle,
@@ -667,7 +666,6 @@ pub fn mall() -> Mall {
         40,
         false,
     ));
-    fixtures.push(f(FixtureKind::Moon, 750, 120, 0, [140, 160, 210], 55, 260, false));
 
     // T6, T9: the ring sits in the court's south half, off the line from
     // the wing to the cursed store and about 14 m from both its doors; the
@@ -697,14 +695,13 @@ pub fn mall() -> Mall {
         });
     }
 
-    // T14: the lamps over the court go through the fuse box; candles and
-    // the moon do not
+    // T14, T20: the ring's candles are electric, on a cord to the fuse box
     let fusebox = v3(d(603), d(14), d(90));
     let breaker_feeds = fixtures
         .iter()
         .enumerate()
         .filter(|(_, f)| {
-            f.kind == FixtureKind::Lamp && f.at.x > i(60) && f.at.x < i(90) && f.at.z.abs() < i(15)
+            f.kind == FixtureKind::Candle && f.at.x > i(60) && f.at.x < i(90) && f.at.z.abs() < i(15)
         })
         .map(|(k, _)| k)
         .collect();

@@ -623,15 +623,15 @@ fn a_careless_player_crossing_the_middle_lit_is_still_caught() {
 }
 
 #[test]
-fn the_cursed_door_stands_in_moonlight_only() {
-    // T6, worked by hand from the fixture table: at the handle (89, 1.6, 0)
-    // no lamp, pendant or troffer is in range (the moved lamp at (84, 7, −12)
-    // is 14.1 m off, its reach 14 m); the moon (power 0.55, reach 26 m) is,
-    // over the dark's 1/6
+fn the_cursed_door_stands_in_the_dark() {
+    // T6, T20, worked by hand from the fixture table: at the handle (89,
+    // 1.6, 0) no fixture is in range (the court has no lamp or moon now;
+    // the store's candles at (99, −0.5) reach 4 m, 10 m off): only the
+    // dark's 1/6
     let mut w = playing();
     w.flashlight.on = false;
     let at = v3(int(89), ONE * 16 / 10, 0);
-    assert_eq!(w.lit_at(at), ONE / 6 + 55 * ONE / 100);
+    assert_eq!(w.lit_at(at), ONE / 6);
 }
 
 #[test]
@@ -800,10 +800,10 @@ fn a_cultist_never_walks_through_a_solid_wall_or_door() {
 fn a_lit_player_in_plain_view_at_fifteen_metres_is_noticed_then_hunted() {
     // T9, worked by hand. One cultist, at its post (79, −9) facing the
     // ring (west); you stand 15 m west at (64, −9), light on and full.
-    // Light on you: the dark's 1/6 + the flashlight 3 + the lamp at
-    // (68, 7, −8) 0.7 + the moon 0.55 = 4.4167; sight 4.4167 / 15 = 0.2944;
-    // suspicion grows 0.2944 / 40 = 0.00736 a tick: it looks (0.3) on
-    // tick 41 and hunts (1.0) on tick 136
+    // Light on you (T20: no lamp or moon in the court): the dark's 1/6 +
+    // the flashlight 3 = 3.1667; sight 3.1667 / 15 = 0.2111; suspicion
+    // grows 0.2111 / 40 = 0.00528 a tick: it looks (0.3) on tick 57 and
+    // hunts (1.0) on tick 190
     let mut w = playing();
     for (i, c) in w.cultists.iter_mut().enumerate() {
         if i != 0 {
@@ -827,8 +827,8 @@ fn a_lit_player_in_plain_view_at_fifteen_metres_is_noticed_then_hunted() {
         }
     }
     let (l, h) = (looked.unwrap(), hunted.unwrap());
-    assert!((l - 41).abs() <= 2, "looked on tick {l}");
-    assert!((h - 136).abs() <= 3, "hunted on tick {h}");
+    assert!((l - 57).abs() <= 2, "looked on tick {l}");
+    assert!((h - 190).abs() <= 3, "hunted on tick {h}");
 }
 
 // T12: the curios -------------------------------------------------------
@@ -1155,12 +1155,14 @@ fn the_girl_never_stands_in_a_wall_a_counter_or_a_door() {
 
 // T14: the fuse box ------------------------------------------------------
 
-/// From the fuse box, light off and standing, sprint along the court's
-/// north side to the cursed store's door, then crouch at its handle for
-/// fifteen seconds: whether any cultist attacked.
+/// From the fuse box, light on (T20: the court is dark) and standing,
+/// sprint along the court's north side to the cursed store's door, then
+/// crouch at its handle for fifteen seconds with the light put out:
+/// whether any cultist attacked.
 fn run_past(throw: bool, shoot: bool) -> bool {
     let mut w = playing();
-    w.flashlight.on = false;
+    w.flashlight.on = true;
+    w.flashlight.charge = crate::lights::FULL;
     w.body = Body::at(v3(int(61), 0, int(9)));
     w.yaw = yaw_of(w.mall.fusebox.sub(w.body.origin));
     w.pitch = -fx::deg(10);
@@ -1183,10 +1185,12 @@ fn run_past(throw: bool, shoot: bool) -> bool {
         }
         w.yaw = yaw_of(to);
         w.pitch = 0;
+        w.flashlight.charge = crate::lights::FULL;
         w.tick(&keys(FORWARD | SPRINT));
         attacked |= w.cultists.iter().any(|c| c.mind == Mind::Attack);
         assert!(w.tick < 30 * HZ, "the run got stuck");
     }
+    w.flashlight.on = false;
     for _ in 0..15 * HZ {
         w.yaw = fx::deg(-90);
         w.tick(&keys(CROUCH));
@@ -1213,15 +1217,17 @@ fn with_the_breaker_thrown_you_can_sprint_past_the_cult_and_turn_the_handle() {
 }
 
 #[test]
-fn the_breaker_feeds_the_courts_two_lamps_and_comes_back_on_after_forty_seconds() {
+fn the_breaker_feeds_the_rings_candles_and_comes_back_on_after_forty_seconds() {
     let mut w = playing();
     let feeds = w.mall.breaker_feeds.clone();
-    // the lamps at (68, −8) and (84, −12)
-    let at: Vec<V3> = feeds.iter().map(|&i| w.mall.fixtures[i].at).collect();
-    assert_eq!(
-        at,
-        vec![v3(int(68), int(7), int(-8)), v3(int(84), int(7), int(-12))]
-    );
+    // T20: the ring's six candles, 0.8 × 4 m = 3.2 m from its middle
+    assert_eq!(feeds.len(), 6);
+    for &i in &feeds {
+        let f = w.mall.fixtures[i];
+        assert_eq!(f.kind, FixtureKind::Candle);
+        let r = v3(f.at.x - mall::RING.x, 0, f.at.z - mall::RING.z).len_xz();
+        assert!(near(r, ONE * 32 / 10, ONE / 50), "{}", fx::decimal(r, 2));
+    }
     let before: Vec<_> = feeds.iter().map(|&i| w.lights.states[i]).collect();
     // nobody about to cut the forty seconds short
     for c in w.cultists.iter_mut() {
@@ -1321,7 +1327,7 @@ fn from_the_board_you_can_reach_the_court_when_the_spirit_rises() {
 // T16: darker ----------------------------------------------------------------
 
 #[test]
-fn ten_seconds_in_the_dark_the_eye_brightens_it_by_no_more_than_five_percent() {
+fn ten_seconds_in_the_dark_the_eye_does_not_brighten_it() {
     let mut w = playing();
     w.flashlight.on = false;
     // a place no fixture reaches: the night's floor of light, 1/6
@@ -1334,8 +1340,8 @@ fn ten_seconds_in_the_dark_the_eye_brightens_it_by_no_more_than_five_percent() {
         w.body.origin = dark;
         w.tick(&Input::default());
     }
-    // lit 1/6 here: 1.1 − 1/24 = 1.058, held to 1.05
-    assert_eq!(w.exposure, ONE * 105 / 100);
+    // lit 1/6 here: 1.1 − 1/24 = 1.058, held to 1 (T20)
+    assert_eq!(w.exposure, ONE);
 }
 
 #[test]
@@ -1594,4 +1600,125 @@ fn the_spirit_stares_then_screams_then_comes_slowly_and_faster() {
     let pace = w.spirit.at.sub(b).len_xz() * HZ as i32;
     assert!(near(pace, ONE * 36 / 10, ONE / 10), "{}", fx::decimal(pace, 2));
     assert_ne!(rose, w.spirit.at);
+}
+
+#[test]
+fn the_spirit_never_stalls_on_four_ways_out_through_wings_and_stores() {
+    // T21: carried at 3 m/s from the board out to the doors, by the wing,
+    // through Kandy Korner, the jeweller's and Belle Mode; kept alive to
+    // watch. A stall: after it starts to come, two seconds moving less than
+    // half a metre while you are more than 2 m off
+    let routes: Vec<Vec<(i32, i32)>> = vec![
+        vec![(97, 0), (88, 0), (62, 2), (30, 0), (-5, 0)],
+        vec![
+            (97, 0),
+            (88, 0),
+            (62, 2),
+            (52, 0),
+            (52, 10),
+            (54, 13),
+            (52, 0),
+            (30, 0),
+            (-5, 0),
+        ],
+        vec![
+            (97, 0),
+            (88, 0),
+            (70, 12),
+            (62, 2),
+            (38, 0),
+            (38, -10),
+            (36, -13),
+            (38, 0),
+            (-5, 0),
+        ],
+        vec![
+            (97, 0),
+            (88, 0),
+            (62, 2),
+            (59, 4),
+            (45, 4),
+            (24, 4),
+            (24, 10),
+            (26, 13),
+            (24, 4),
+            (-5, 0),
+        ],
+    ];
+    for (ri, route) in routes.iter().enumerate() {
+        let mut w = playing();
+        w.door_open[0] = ONE;
+        let b = w.mall.doors[0].brush;
+        w.mall.map.brushes[b] = mall::open_brush();
+        w.body = Body::at(v3(int(97), 0, 0));
+        w.tick(&Input::default());
+        w.begin_chase();
+        let mut window = std::collections::VecDeque::new();
+        for leg in route.windows(2) {
+            let a = v3(int(leg[0].0), 0, int(leg[0].1));
+            let way = v3(int(leg[1].0), 0, int(leg[1].1)).sub(a);
+            let n = way.len_xz() / (ONE * 3 / 60);
+            for k in 0..n {
+                w.body.origin = a.add(way.scale(fx::div(k, n)));
+                w.health = HEALTH;
+                w.phase = Phase::Play;
+                w.tick(&Input::default());
+                window.push_back(w.spirit.at);
+                if window.len() > 2 * HZ as usize {
+                    window.pop_front();
+                }
+                let moved = window.back().unwrap().sub(*window.front().unwrap()).len_xz();
+                let gap = w.spirit.at.sub(w.body.origin).len_xz();
+                let coming = w.spirit.chase_ticks > RISE_TICKS + 2 * HZ as i32;
+                assert!(
+                    !(coming && moved < ONE / 2 && gap > int(2)),
+                    "route {ri}: stalled at {}, {}",
+                    fx::decimal(w.spirit.at.x, 1),
+                    fx::decimal(w.spirit.at.z, 1)
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn the_spirit_takes_the_fewest_rooms() {
+    // T21, from the portal table (dm): from Belle Mode (24, 10) to Kandy
+    // Korner (52, 10) it goes out by Belle's storefront (24, 5); from the
+    // wing at (20, 0) to the court (75, 0) by the wings' join (30, 0); on
+    // the join itself, on to the court's mouth (60, 0)
+    let w = playing();
+    assert_eq!(
+        w.next_waypoint(v3(int(24), 0, int(10)), v3(int(52), 0, int(10))),
+        v3(int(24), 0, int(5))
+    );
+    assert_eq!(
+        w.next_waypoint(v3(int(20), 0, 0), v3(int(75), 0, 0)),
+        v3(int(30), 0, 0)
+    );
+    assert_eq!(
+        w.next_waypoint(v3(int(30), 0, 0), v3(int(75), 0, 0)),
+        v3(int(60), 0, 0)
+    );
+}
+
+#[test]
+fn past_the_doors_the_director_scares_you_loaded_or_not() {
+    // T20: never loaded, walking the wing at menace 1: a scare within a
+    // minute (the wait 20 s, then about one in seven seconds)
+    let mut w = playing();
+    w.armed = false;
+    w.body = Body::at(v3(int(20), 0, 0));
+    w.tick(&Input::default());
+    assert_eq!(w.menace(), 1);
+    let start = w.last_scare;
+    let mut t = 0;
+    while w.last_scare == start {
+        w.body.origin = v3(int(20), 0, 0);
+        w.yaw = fx::deg((t * 3) % 360);
+        w.tick(&Input::default());
+        t += 1;
+        assert!(t < 60 * HZ as i32, "no scare in a minute");
+    }
+    assert!(!w.armed);
 }

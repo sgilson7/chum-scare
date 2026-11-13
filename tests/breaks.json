@@ -70,18 +70,11 @@
     "test": "the_census_walks_the_whole_route_and_gets_out"
   },
   {
-    "name": "too faint to make out is nothing (T6)",
-    "file": "crates/core/src/world.rs",
-    "find": "sight = if s < NOTICE_FLOOR || self.dazzled > 0 {",
-    "replace": "sight = if self.dazzled > 0 {",
-    "test": "the_careful_and_the_wary_get_past_the_cult_and_the_careless_do_not"
-  },
-  {
-    "name": "the cursed door is out of the lamps' reach (T6)",
+    "name": "the court is unlit at the cursed door (T6, T20)",
     "file": "crates/core/src/mall.rs",
-    "find": "fixtures.push(f(FixtureKind::Lamp, 840, 70, -120, warm, 70, 140, true));",
-    "replace": "fixtures.push(f(FixtureKind::Lamp, 820, 70, 80, warm, 70, 140, true));",
-    "test": "the_cursed_door_stands_in_moonlight_only"
+    "find": "    // T20: the court is the darkest room: no lamps and no moonlight (were",
+    "replace": "    fixtures.push(f(FixtureKind::Lamp, 880, 70, 0, warm, 70, 140, false));\n    // T20: the court is the darkest room: no lamps and no moonlight (were",
+    "test": "the_cursed_door_stands_in_the_dark"
   },
   {
     "name": "the wait is the current menace's (CH-Q26)",
@@ -245,25 +238,18 @@
     "test": "the_telephone_rings_when_you_walk_in_and_answering_it_stops_it"
   },
   {
-    "name": "the sudden dark leaves the cult deaf (T14)",
-    "file": "crates/core/src/world.rs",
-    "find": "        let deaf = self.dazzled > 0;",
-    "replace": "        let deaf = false;",
-    "test": "with_the_breaker_thrown_you_can_sprint_past_the_cult_and_turn_the_handle"
-  },
-  {
     "name": "the thrown breaker puts the court's lamps out (T14)",
     "file": "crates/core/src/world.rs",
     "find": "                self.lights.states[i] = crate::lights::State::Broken;",
     "replace": "",
-    "test": "the_breaker_feeds_the_courts_two_lamps_and_comes_back_on_after_forty_seconds"
+    "test": "the_breaker_feeds_the_rings_candles_and_comes_back_on_after_forty_seconds"
   },
   {
     "name": "the breaker comes back on (T14)",
     "file": "crates/core/src/world.rs",
     "find": "            if self.tick >= until {",
     "replace": "            if false && self.tick >= until {",
-    "test": "the_breaker_feeds_the_courts_two_lamps_and_comes_back_on_after_forty_seconds"
+    "test": "the_breaker_feeds_the_rings_candles_and_comes_back_on_after_forty_seconds"
   },
   {
     "name": "the spirit stands while it rises (T15)",
@@ -280,11 +266,11 @@
     "test": "the_spirit_rises_in_the_far_corner_and_stands_three_seconds"
   },
   {
-    "name": "the eye brightens the dark only a little (T16)",
+    "name": "the eye does not brighten the dark (T16, T20)",
     "file": "crates/core/src/world.rs",
-    "find": "pub const EXPOSURE_DARK: Fx = ONE * 105 / 100;",
+    "find": "pub const EXPOSURE_DARK: Fx = ONE;",
     "replace": "pub const EXPOSURE_DARK: Fx = ONE * 3 / 2;",
-    "test": "ten_seconds_in_the_dark_the_eye_brightens_it_by_no_more_than_five_percent"
+    "test": "ten_seconds_in_the_dark_the_eye_does_not_brighten_it"
   },
   {
     "name": "lamps draw half again their power (T16)",
@@ -292,13 +278,6 @@
     "find": "pub const LAMP_GAIN: Fx = ONE * 3 / 2;",
     "replace": "pub const LAMP_GAIN: Fx = ONE;",
     "test": "a_lamp_draws_half_again_its_power"
-  },
-  {
-    "name": "the spirit leaves the doorway it stands on (T19)",
-    "file": "crates/core/src/world.rs",
-    "find": "            if p.at.sub(from).len_xz() < ONE / 2 {\n                continue;\n            }",
-    "replace": "",
-    "test": "the_spirit_follows_you_out_through_every_doorway"
   },
   {
     "name": "the spirit follows your trail (T19)",
@@ -376,5 +355,26 @@
     "find": "            if !t.start_solid && !t.hit() && self.clear_line(eye, at) {",
     "replace": "            if self.clear_line(eye, at) {",
     "test": "an_apparition_never_hangs_inside_a_wall"
+  },
+  {
+    "name": "the spirit goes on through a doorway (T19, T21)",
+    "file": "crates/core/src/world.rs",
+    "find": "        if door.sub(v3(from.x, 0, from.z)).len_xz() < ONE / 2 {",
+    "replace": "        if false {",
+    "test": "the_spirit_follows_you_out_through_every_doorway"
+  },
+  {
+    "name": "the spirit routes by the fewest rooms (T21)",
+    "file": "crates/core/src/world.rs",
+    "find": "        let Some(pi) = next[a] else {\n            return goal;\n        };",
+    "replace": "        let pi = self.mall.portals.iter().position(|p| p.a == a || p.b == a).unwrap();",
+    "test": "the_spirit_takes_the_fewest_rooms"
+  },
+  {
+    "name": "the director wakes past the doors (T20)",
+    "file": "crates/core/src/world.rs",
+    "find": "        if !(self.armed || menace >= 1) || self.scare_wait > 0 || self.spirit.chasing {",
+    "replace": "        if !self.armed || self.scare_wait > 0 || self.spirit.chasing {",
+    "test": "past_the_doors_the_director_scares_you_loaded_or_not"
   }
 ]

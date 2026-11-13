@@ -22,7 +22,7 @@ Not: magazine, clip
 
 ### Breaker
 
-The handle on the fuse box on the court's west wall. Thrown with E, it puts out the court's lamps until someone throws it back, and the sudden dark leaves the cult blind for a moment. Shot, the box puts them out for good, and the cult hears the shot.
+The handle on the fuse box on the court's west wall. The cult's candles are electric and run from it. Thrown with E, it puts them out until someone throws it back, and the sudden dark leaves the cult blind for a moment. Shot, the box puts them out for good, and the cult hears the shot.
 
 ### Chamber
 
