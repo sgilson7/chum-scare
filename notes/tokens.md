@@ -10,3 +10,4 @@ One row per measured session, newest last (`python3 tools/tokens.py`). Each call
 | 2026-11-13 15:32 | 9db705ea | 464 | 154k (call 38) | 552k | 272k | 2 | 124.9M | 37% |
 | 2026-11-13 16:02 | 9db705ea | 539 | 154k (call 38) | 552k | 267k | 2 | 142.7M | 34% |
 | 2026-11-13 16:23 | 9db705ea | 571 | 154k (call 38) | 552k | 269k | 2 | 152.5M | 34% |
+| 2026-11-13 17:41 | 9db705ea | 597 | 154k (call 38) | 552k | 273k | 2 | 161.7M | 35% |
