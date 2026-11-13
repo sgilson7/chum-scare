@@ -203,13 +203,13 @@ const WALL: Fx = ONE * 3 / 10;
 /// The cult's ring: its centre (was x 75, z 0, T6) and the posts' radius
 /// (was 5 m).
 pub const RING: V3 = V3 {
-    x: 70 * ONE,
+    x: 75 * ONE,
     y: 0,
-    z: -8 * ONE,
+    z: -9 * ONE,
 };
 pub const RING_R: Fx = 4 * ONE;
-/// The two walkers circle the ring this far out (was 11 m).
-pub const PATROL_R: Fx = 6 * ONE;
+/// The two walkers circle the ring this far out (was 11 m; 6 m in T6).
+pub const PATROL_R: Fx = 5 * ONE;
 
 pub const OLD_TILE: [i32; 3] = [118, 110, 96];
 const DIRTY_PLASTER: [i32; 3] = [132, 124, 108];
@@ -628,9 +628,9 @@ pub fn mall() -> Mall {
     ));
     fixtures.push(f(FixtureKind::Moon, 750, 120, 0, [140, 160, 210], 55, 260, false));
 
-    // T6: the ring sits in the court's south-west, off the line between
-    // the wing and the cursed store and nearly 18 m from the cursed door;
-    // the north half (the raffle car's side) is the way past
+    // T6, T9: the ring sits in the court's south half, off the line from
+    // the wing to the cursed store and about 14 m from both its doors; the
+    // north half (the raffle car's side) is the way past
     let ring = RING;
     let mut cultist_posts = Vec::new();
     for k in 0..6 {

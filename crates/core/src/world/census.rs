@@ -60,7 +60,10 @@ enum Step {
 fn route(player: &str) -> Vec<(&'static str, Step)> {
     use Step::*;
     let careful = player == "methodical";
-    let (walk, look) = if careful { (130, 4) } else { (260, 1) };
+    // T9: the wary player walks like the methodical one, light on, and
+    // crosses the court like the brisk one, until a cultist mutters
+    let wary = player == "wary";
+    let (walk, look) = if careful || wary { (130, 4) } else { (260, 1) };
     let mut r = vec![("load", Load(6, if careful { 35 } else { 25 }))];
     let wing: &[(i32, i32)] = &[
         (12, 0),
@@ -94,6 +97,7 @@ fn route(player: &str) -> Vec<(&'static str, Step)> {
         for &(x, z) in &[(60, 2), (66, 10), (84, 10), (89, 0)] {
             r.push(("court", Walk(x, z, 130, false, true)));
         }
+        let _ = wary;
     }
     r.push(("door", Door(if careful { 8 } else { 5 })));
     r.push(("cursed", Walk(98, 0, 130, false, true)));
@@ -142,6 +146,7 @@ pub fn census(seed: u64, player: &'static str) -> Census {
     };
     let tenths = |w: &World| ((w.tick - 1) * 10 / HZ) as i32;
     let mut look_t = 0i32;
+    let mut warned = false;
     for (stage, step) in route(player) {
         let start = w.tick;
         // the ticks this step takes, and what each sets before the tick
@@ -166,6 +171,20 @@ pub fn census(seed: u64, player: &'static str) -> Census {
                 fx::mul(fx::deg(most), fx::sin(look_t * fx::TURN / (period * HZ as i32)))
             };
             let mut keys = 0;
+            // the wary player, once a cultist has turned to look: light
+            // out and crouched for the rest of the court and the door
+            if player == "wary"
+                && !w.spirit.chasing
+                && w.cultists
+                    .iter()
+                    .any(|c| c.mind != Mind::Chant && c.mind != Mind::Dead)
+            {
+                warned = true;
+            }
+            let hush = warned && matches!(stage, "court" | "door");
+            if hush {
+                keys |= CROUCH;
+            }
             // the right button is held while the hands are out
             let hands = matches!(step, Step::Load(..) | Step::Door(_) | Step::Ouija(_));
             match step {
@@ -176,7 +195,7 @@ pub fn census(seed: u64, player: &'static str) -> Census {
                     let ahead = if way.len_xz() > 0 { yaw_of(way) } else { heading };
                     w.yaw = (ahead + if stage == "chase" { 0 } else { sway(35, 7) }).rem_euclid(fx::TURN);
                     w.pitch = 0;
-                    w.flashlight.on = light;
+                    w.flashlight.on = light && !hush;
                     if crouch {
                         keys |= CROUCH;
                     }
@@ -379,6 +398,23 @@ mod tests {
         // the handle are hands-busy time before the chase (36 s); the board
         // adds up to 10 s more, less when it spells R U N sooner
         assert!(c.busy >= 360 - 6 && c.busy <= 460 + 6, "{}", c.busy);
+    }
+
+    #[test]
+    fn the_careful_and_the_wary_get_past_the_cult_and_the_careless_do_not() {
+        // T6, T9: before the board, no cultist shouts at the methodical
+        // player or the wary one (who goes dark and crouches at the first
+        // mutter); the brisk one, lit and standing, is hunted
+        let shouted = |c: &Census| {
+            c.events
+                .iter()
+                .any(|e| e.what == "shout" && matches!(e.stage, "wings" | "court" | "door" | "cursed"))
+        };
+        for seed in [3, 4] {
+            assert!(!shouted(&census(seed, "methodical")), "methodical, seed {seed}");
+            assert!(!shouted(&census(seed, "wary")), "wary, seed {seed}");
+            assert!(shouted(&census(seed, "brisk")), "brisk, seed {seed}");
+        }
     }
 
     #[test]

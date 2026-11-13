@@ -45,6 +45,8 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R6.1 | divergence | CH-Q26 A: three scare points in the wings raise menace 1 to about 1 a minute | The wings already had eight points in reach; the cause was the wait: the first scare at the doors (menace 0) set a 60 s wait that covered the 40 s in the wings | Built both: the three points, and the wait now counts from the last scare at the menace you are in now. Menace 1: 0.47 a minute before, 1.25 after | `World::director`; `the_directors_wait_is_the_ceiling_…` | done |
 | R6.2 | divergence | CH-Q25 A: glimpses 40° to 75° off the view | The screen's edge on 16:9 is 51° (70° vertical view), so most of that range is off the screen | 35° to 48°, so every glimpse is on the screen near its edge; 5 to 12 m; 20 s apart; moved nearer when a wall is in the way | `world::GLIMPSE_NEAR`, `GLIMPSE_FAR`; `glimpses_fall_where_…` | done |
 | R6.3 | finding | Journal page 8: the screen's edge is 58° (`HALF_VIEW`) | `HALF_VIEW` is a design margin, not the screen: at 16:9 the edge is 51°, so the old glimpses at 55° were just off the screen | `tools/census.py` bands now use 51°; the earlier census entry is corrected in the next entry, not edited | `tools/census.py` | done |
+| R7.1 | divergence | T6: "the door" is the cursed store's door | Your T9 words ("on the way into the main hall") say it was the court's entrance; T6 had moved the ring toward it (12.8 m) | The ring centred in the court's south half, about 14 m from both doors | `mall::RING`; `every_cult_post_stands_well_off_both_court_doors` | done |
+| R7.2 | worklist | T10: what stopped progress after the cult was dead | No prompt said how to turn a handle or use the board; I guessed that was it | Prompts added; tell me if something else stopped you | `data/strings.json` prompt_turn_handle, prompt_turning, prompt_use_board | person |
 
 ## Strings written by the agent
 
@@ -53,3 +55,6 @@ Each reader-visible string the agent wrote, with its key, for the person to read
 | Key | String |
 | --- | --- |
 | `settings_volume` | Volume |
+| `prompt_turn_handle` | Hold the right button and draw circles to turn the handle |
+| `prompt_turning` | Keep drawing circles. Let go of the button to stop. |
+| `prompt_use_board` | Hold the right button to put your hand on the planchette |

@@ -6,7 +6,7 @@ use tool_core::world::census::census;
 
 fn main() {
     let n: u64 = std::env::args().nth(1).and_then(|a| a.parse().ok()).unwrap_or(50);
-    for player in ["methodical", "brisk"] {
+    for player in ["methodical", "brisk", "wary"] {
         for seed in 1..=n {
             let c = census(seed * 7919, player);
             println!("{}", serde_json::to_string(&c).unwrap_or_default());

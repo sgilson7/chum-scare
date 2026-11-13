@@ -396,6 +396,86 @@ impl World {
         off_view(self.yaw, self.pitch, self.eye(), p)
     }
 
+    /// Where to head for `goal` from `from` (T8): the goal itself when it
+    /// is in the same room, else the doorway leading there by the fewest
+    /// rooms, through open doors only. None when there is no way.
+    pub fn way_to(&self, from: V3, goal: V3) -> Option<V3> {
+        let (a, b) = (self.mall.room_of(from), self.mall.room_of(goal));
+        if a == b {
+            return Some(goal);
+        }
+        let n = self.mall.rooms.len();
+        // breadth first, from the goal's room back, so each room knows the
+        // portal that is its next step
+        let mut next: Vec<Option<usize>> = vec![None; n];
+        let mut seen = vec![false; n];
+        let mut queue = std::collections::VecDeque::from([b]);
+        seen[b] = true;
+        while let Some(r) = queue.pop_front() {
+            for (pi, p) in self.mall.portals.iter().enumerate() {
+                if let Some(d) = p.door {
+                    if self.door_open[d] == 0 {
+                        continue;
+                    }
+                }
+                let other = if p.a == r {
+                    p.b
+                } else if p.b == r {
+                    p.a
+                } else {
+                    continue;
+                };
+                if !seen[other] {
+                    seen[other] = true;
+                    next[other] = Some(pi);
+                    queue.push_back(other);
+                }
+            }
+        }
+        next[a].map(|pi| {
+            let at = self.mall.portals[pi].at;
+            v3(at.x, 0, at.z)
+        })
+    }
+
+    /// One step of a cultist toward `goal` (T8): by `way_to`, sliding along
+    /// walls, never into one.
+    pub fn cult_step(&self, at: V3, goal: V3, step: Fx) -> V3 {
+        let Some(mut aim) = self.way_to(at, goal) else {
+            return at;
+        };
+        // on the doorway itself: on through it, toward the goal
+        if v3(aim.x - at.x, 0, aim.z - at.z).len_xz() < ONE / 2 {
+            aim = goal;
+        }
+        let way = v3(aim.x - at.x, 0, aim.z - at.z);
+        let l = way.len_xz();
+        if l == 0 {
+            return at;
+        }
+        let step = step.min(l);
+        let d = v3(
+            fx::div(fx::mul(way.x, step), l),
+            0,
+            fx::div(fx::mul(way.z, step), l),
+        );
+        let mut sc = Scratch::default();
+        let (lo, hi) = (
+            v3(-CULT_HALF, ONE / 10, -CULT_HALF),
+            v3(CULT_HALF, ONE * 17 / 10, CULT_HALF),
+        );
+        for try_d in [d, v3(d.x, 0, 0), v3(0, 0, d.z)] {
+            if try_d.len_xz() == 0 {
+                continue;
+            }
+            let t = trace_box(&self.mall.map, &mut sc, at, at.add(try_d), lo, hi);
+            if t.start_solid || !t.hit() {
+                return at.add(try_d);
+            }
+        }
+        at
+    }
+
     fn clear_line(&self, a: V3, b: V3) -> bool {
         let mut sc = Scratch::default();
         !trace_box(&self.mall.map, &mut sc, a, b, V3::ZERO, V3::ZERO).hit()
@@ -643,22 +723,32 @@ impl World {
                 return;
             }
         }
+        let eye = self.eye();
+        let door = self.mall.doors.iter().enumerate().position(|(i, d)| {
+            self.door_open[i] < ONE
+                && d.handle.sub(eye).len() < REACH
+                && self.off_view(d.handle) < fx::deg(35)
+        });
+        let board = self
+            .mall
+            .props
+            .iter()
+            .find(|p| p.kind == PropKind::Ouija)
+            .map(|p| p.at.add(v3(0, ONE * 8 / 10, 0)));
+        let near_board = board
+            .map(|b| b.sub(eye).len() < REACH * 3 / 2 && self.off_view(b) < fx::deg(40))
+            .unwrap_or(false);
+        // T10: say how a handle and the board are used
+        if self.prompt.is_empty() {
+            if self.mode == Mode::Look && door.is_some() {
+                self.prompt = "prompt_turn_handle";
+            } else if matches!(self.mode, Mode::Door(_)) {
+                self.prompt = "prompt_turning";
+            } else if self.mode == Mode::Look && near_board && self.letters < 3 && self.blackout.is_none() {
+                self.prompt = "prompt_use_board";
+            }
+        }
         if fresh_alt && self.mode == Mode::Look {
-            let eye = self.eye();
-            let door = self.mall.doors.iter().enumerate().position(|(i, d)| {
-                self.door_open[i] < ONE
-                    && d.handle.sub(eye).len() < REACH
-                    && self.off_view(d.handle) < fx::deg(35)
-            });
-            let board = self
-                .mall
-                .props
-                .iter()
-                .find(|p| p.kind == PropKind::Ouija)
-                .map(|p| p.at.add(v3(0, ONE * 8 / 10, 0)));
-            let near_board = board
-                .map(|b| b.sub(eye).len() < REACH * 3 / 2 && self.off_view(b) < fx::deg(40))
-                .unwrap_or(false);
             if let Some(dn) = door {
                 self.mode = Mode::Door(dn);
                 self.hand = Hand {
@@ -1333,19 +1423,15 @@ impl World {
                     }
                     let away = v3(c.at.x - self.spirit.at.x, 0, c.at.z - self.spirit.at.z);
                     let l = away.len_xz().max(1);
-                    let step = ONE * 3 / HZ as i32;
-                    let next = c.at.add(v3(
-                        fx::div(fx::mul(away.x, step), l),
-                        0,
-                        fx::div(fx::mul(away.z, step), l),
-                    ));
+                    let goal = c.at.add(v3(fx::div(away.x * 4, l), 0, fx::div(away.z * 4, l)));
+                    let next = self.cult_step(c.at, goal, ONE * 3 / HZ as i32);
                     if self.mall.rooms[10].holds(next) {
                         c.at = next;
                     }
                     c.yaw = yaw_of(away);
                 }
                 _ => {
-                    c.suspicion += sight / 20;
+                    c.suspicion += sight / SUSPICION_SLOW;
                     c.quiet += 1;
                     if sight > 0 {
                         c.goal = me;
@@ -1397,16 +1483,14 @@ impl World {
                         c.yaw = turn_toward(c.yaw, yaw_of(target.sub(c.at)), fx::deg(3));
                     } else {
                         let way = v3(goal.x - c.at.x, 0, goal.z - c.at.z);
-                        let l = way.len_xz();
-                        if l > ONE / 2 && speed > 0 {
-                            let step = speed / HZ as i32;
-                            let next = c.at.add(v3(
-                                fx::div(fx::mul(way.x, step), l),
-                                0,
-                                fx::div(fx::mul(way.z, step), l),
-                            ));
+                        if way.len_xz() > ONE / 2 && speed > 0 {
+                            // T8: through doorways, around walls
+                            let next = self.cult_step(c.at, goal, speed / HZ as i32);
+                            let moved = next.sub(c.at);
+                            if moved.len_xz() > 0 {
+                                c.yaw = turn_toward(c.yaw, yaw_of(moved), fx::deg(6));
+                            }
                             c.at = next;
-                            c.yaw = turn_toward(c.yaw, yaw_of(way), fx::deg(6));
                         }
                     }
                     if c.mind == Mind::Attack {
@@ -1420,7 +1504,8 @@ impl World {
                         }
                     }
                     if c.mind == Mind::Look && self.cultists[i].mind == Mind::Chant {
-                        self.say("mutter", ceye, ONE * 4 / 10, Some("sub_mutter"));
+                        // T9: loud enough to hear across the court: your warning
+                        self.say("mutter", ceye, ONE * 8 / 10, Some("sub_mutter"));
                     }
                     if c.mind == Mind::Attack && self.cultists[i].mind != Mind::Attack {
                         self.say("shout", ceye, ONE, Some("sub_shout"));
@@ -1669,6 +1754,13 @@ pub fn per_minute(menace: i32) -> i32 {
 /// The least a cultist can make out (T6): crouched with the light off, a
 /// few metres off in lamplight, you are a shadow.
 pub const NOTICE_FLOOR: Fx = ONE / 30;
+
+/// Suspicion grows by sight ÷ this a tick (was 20, T9): a lit walker
+/// gets about eight seconds from the first mutter to the attack.
+pub const SUSPICION_SLOW: Fx = 40;
+
+/// Half a cultist's width, for walls (T8).
+pub const CULT_HALF: Fx = ONE * 3 / 10;
 
 /// Mannequins farther than this are not turned by the director (CH-Q24).
 pub const MANNEQUIN_REACH: Fx = 15 * ONE;

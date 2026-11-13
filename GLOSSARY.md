@@ -40,9 +40,21 @@ The light in your left hand. It runs down; holding F and shaking the mouse charg
 
 Not: torch
 
+### Handle
+
+The round handle of a stuck door. Hold the right button on it and draw circles with the mouse to turn it.
+
+Not: knob, lever
+
 ### Hiding place
 
 A booth or locker you can step into with E; the spirit passes you there unless it saw you go in.
+
+### Planchette
+
+The small heart-shaped piece of wood on the ouija board. Your hand rests on it while it slides to the letters.
+
+Not: pointer, cursor
 
 ### Possession
 

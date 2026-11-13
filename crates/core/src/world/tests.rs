@@ -511,16 +511,19 @@ fn settings_kept_as_text_come_back_and_bad_text_leaves_the_defaults() {
 }
 
 #[test]
-fn every_cult_post_stands_well_off_the_cursed_door() {
-    // T6, worked by hand: the ring at (70, −8) with posts 4 m out puts the
-    // nearest posts 17.9 m ((74, −8): √(16² + 8²)) and 18.6 m ((72, −4.54))
-    // from the cursed store's door (90, 0), and none nearer than 4.5 m to
-    // the line from the wing to that door (z = 0)
+fn every_cult_post_stands_well_off_both_court_doors() {
+    // T9, worked by hand: the ring at (75, −9) with posts 4 m out puts the
+    // nearest posts (79, −9) 14.2 m and (77, −5.54) 14.1 m
+    // from the cursed door (90, 0); (71, −9) 14.2 m and (73, −5.54) 14.1 m
+    // from the wing's opening (60, 0); none nearer than 5.5 m to the line
+    // between them (z = 0)
     let w = playing();
     for p in &w.mall.cultist_posts {
         let door = v3(int(90), 0, 0).sub(*p).len_xz();
-        assert!(door > ONE * 175 / 10, "{}", fx::decimal(door, 2));
-        assert!(p.z < -ONE * 45 / 10, "{}", fx::decimal(p.z, 2));
+        let wing = v3(int(60), 0, 0).sub(*p).len_xz();
+        assert!(door > ONE * 14, "{}", fx::decimal(door, 2));
+        assert!(wing > ONE * 14, "{}", fx::decimal(wing, 2));
+        assert!(p.z < -ONE * 55 / 10, "{}", fx::decimal(p.z, 2));
     }
 }
 
@@ -730,4 +733,99 @@ fn glimpses_fall_where_the_screen_shows_them_and_twenty_seconds_apart() {
         }
     }
     assert!(n > 20, "{n}");
+}
+
+#[test]
+fn a_cultist_hunting_you_goes_by_the_doorways_and_never_into_a_wall() {
+    // T8: from the ring to you in Belle Mode (24, 10): out of the court,
+    // along the wings and in at the storefront (24, 5), about 50 m, so
+    // well inside a minute at 3.2 m/s; never standing inside a wall
+    let w = playing();
+    let me = v3(int(24), 0, int(10));
+    let mut at = v3(int(70), 0, int(-2));
+    let step = ONE * 32 / 10 / HZ as i32;
+    let (lo, hi) = (
+        v3(-CULT_HALF, ONE / 10, -CULT_HALF),
+        v3(CULT_HALF, ONE * 17 / 10, CULT_HALF),
+    );
+    let mut sc = Scratch::default();
+    let mut through_front = false;
+    for _ in 0..60 * HZ {
+        at = w.cult_step(at, me, step);
+        assert!(
+            !trace_box(&w.mall.map, &mut sc, at, at, lo, hi).start_solid,
+            "in a wall at {at:?}"
+        );
+        if (at.z - int(5)).abs() < ONE / 2 {
+            assert!(
+                (at.x - int(24)).abs() < int(6),
+                "crossed the shopfront wall at {at:?}"
+            );
+            through_front = true;
+        }
+    }
+    assert!(through_front);
+    assert!(at.sub(me).len_xz() < ONE, "{at:?}");
+}
+
+#[test]
+fn a_cultist_cannot_pass_a_shut_door() {
+    // T8: Kandy Korner's back door into the service corridor is shut, so
+    // there is no way from the corridor to you in the store
+    let mut w = playing();
+    let me = v3(int(52), 0, int(10));
+    let at = v3(int(52), 0, int(17));
+    assert_eq!(w.way_to(at, me), None);
+    // opened, the way is the doorway (52, 15)
+    w.door_open[1] = ONE;
+    assert_eq!(w.way_to(at, me), Some(v3(int(52), 0, int(15))));
+}
+
+#[test]
+fn a_cultist_never_walks_through_a_solid_wall_or_door() {
+    // T8: even when the way says go (the door counted open), the door
+    // itself still stands in the map: walking into it stops at it
+    let mut w = playing();
+    w.door_open[1] = ONE;
+    let me = v3(int(52), 0, int(10));
+    let mut at = v3(int(52), 0, int(17));
+    for _ in 0..30 * HZ {
+        at = w.cult_step(at, me, ONE * 32 / 10 / HZ as i32);
+    }
+    assert!(at.z > int(15), "{at:?}");
+}
+
+#[test]
+fn a_lit_player_in_plain_view_at_fifteen_metres_is_noticed_then_hunted() {
+    // T9, worked by hand. One cultist, at its post (79, −9) facing the
+    // ring (west); you stand 15 m west at (64, −9), light on and full.
+    // Light on you: the dark's 1/6 + the flashlight 3 + the lamp at
+    // (68, 7, −8) 0.7 + the moon 0.55 = 4.4167; sight 4.4167 / 15 = 0.2944;
+    // suspicion grows 0.2944 / 40 = 0.00736 a tick: it looks (0.3) on
+    // tick 41 and hunts (1.0) on tick 136
+    let mut w = playing();
+    for (i, c) in w.cultists.iter_mut().enumerate() {
+        if i != 0 {
+            c.mind = Mind::Dead;
+        }
+    }
+    assert_eq!(w.cultists[0].post, v3(int(79), 0, int(-9)));
+    let (mut looked, mut hunted) = (None, None);
+    for t in 1..400i32 {
+        w.body.origin = v3(int(64), 0, int(-9));
+        w.body.velocity = V3::ZERO;
+        w.flashlight.on = true;
+        w.flashlight.charge = crate::lights::FULL;
+        w.tick(&Input::default());
+        let m = w.cultists[0].mind;
+        if looked.is_none() && m == Mind::Look {
+            looked = Some(t);
+        }
+        if hunted.is_none() && matches!(m, Mind::Search | Mind::Attack) {
+            hunted = Some(t);
+        }
+    }
+    let (l, h) = (looked.unwrap(), hunted.unwrap());
+    assert!((l - 41).abs() <= 2, "looked on tick {l}");
+    assert!((h - 136).abs() <= 3, "hunted on tick {h}");
 }

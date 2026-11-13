@@ -50,6 +50,7 @@ Chum Scare: a first-person horror game in a desktop browser, built on Chumontill
 ## For the person
 
 - **R1.6**: the spirit, cultist, mannequin and car models, made in Blender in `~/Documents/BuilderRefinedArtstyle` and exported as glTF; the game uses stand-ins until then.
+- **R7.2**: say what stopped you after the cult was dead, if it was not the handle (T10).
 - **R5.5**: play the court and say whether the cult is now too easy or still too hard (the ring, the doorway, the notice floor, the two lights; T6).
 - **R1.11**: read and edit the scare list, the store names and the sign texts (journal tab 2, tab 5; `data/strings.json`).
 
