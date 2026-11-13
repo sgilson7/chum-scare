@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Reference default (D4): nothing leaves this origin. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; media-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Chum Scare</title>
+  <link rel="stylesheet" href="style.css?v=a14d85b63932">
+</head>
+<body data-ready="false" data-phase="loading">
+  <canvas id="view"></canvas>
+
+  <div id="hud" hidden>
+    <div id="crosshair"></div>
+    <div id="signs"></div>
+    <div id="ring"><div id="ring-marks"></div></div>
+    <ul id="subs" aria-live="polite"></ul>
+    <p id="prompt"></p>
+    <p id="hint"></p>
+    <div id="vignette"></div>
+    <div id="run" aria-live="assertive"><span></span><span></span><span></span></div>
+    <div id="flash"></div>
+  </div>
+
+  <div id="title-screen" class="screen">
+    <h1 data-text="title"></h1>
+    <p class="tag" data-text="tagline"></p>
+    <section id="step-warn" class="step">
+      <h2 data-text="warning_heading"></h2>
+      <p data-text="warning"></p>
+      <div class="row">
+        <button type="button" data-act="flashes" data-value="keep" data-text="flashes_keep"></button>
+        <button type="button" data-act="flashes" data-value="reduce" data-text="flashes_reduce"></button>
+      </div>
+    </section>
+    <section id="step-bless" class="step" hidden>
+      <h2 data-text="bless_heading"></h2>
+      <div id="candle"><div id="flame"></div><div id="wax"></div></div>
+      <button type="button" id="bless-hold" data-text="bless_hold"></button>
+      <div id="bless-lines" hidden>
+        <p data-text="bless_line_one"></p>
+        <p data-text="bless_line_two"></p>
+        <p data-text="bless_line_three"></p>
+      </div>
+      <button type="button" id="bless-next" class="quiet" data-text="bless_skip"></button>
+    </section>
+    <section id="step-listen" class="step" hidden>
+      <h2 data-text="output_heading"></h2>
+      <div class="col">
+        <button type="button" data-act="output" data-value="headphones" data-text="output_headphones"></button>
+        <button type="button" data-act="output" data-value="speakers" data-text="output_speakers"></button>
+        <button type="button" data-act="output" data-value="mono" data-text="output_mono"></button>
+      </div>
+    </section>
+    <section id="step-go" class="step" hidden>
+      <div class="row"><span id="volume-go" data-text="settings_volume"></span><input type="range" class="volume" min="0" max="100" step="5" aria-labelledby="volume-go"></div>
+      <p class="controls" data-text="controls"></p>
+      <button type="button" id="enter" class="big" data-text="enter"></button>
+    </section>
+  </div>
+
+  <div id="pause" class="screen" hidden>
+    <h2 data-text="pause_heading"></h2>
+    <div class="settings">
+      <span data-text="settings_output"></span>
+      <div class="row">
+        <button type="button" data-act="output" data-value="headphones" data-text="output_headphones"></button>
+        <button type="button" data-act="output" data-value="speakers" data-text="output_speakers"></button>
+        <button type="button" data-act="output" data-value="mono" data-text="output_mono"></button>
+      </div>
+      <span id="volume-pause" data-text="settings_volume"></span>
+      <div class="row"><input type="range" class="volume" min="0" max="100" step="5" aria-labelledby="volume-pause"></div>
+      <span data-text="settings_ring"></span>
+      <div class="row"><button type="button" data-act="ring" data-value="on" data-text="on"></button><button type="button" data-act="ring" data-value="off" data-text="off"></button></div>
+      <span data-text="settings_subtitles"></span>
+      <div class="row"><button type="button" data-act="subtitles" data-value="on" data-text="on"></button><button type="button" data-act="subtitles" data-value="off" data-text="off"></button></div>
+      <span data-text="settings_flashes"></span>
+      <div class="row"><button type="button" data-act="flashes" data-value="keep" data-text="flashes_keep"></button><button type="button" data-act="flashes" data-value="reduce" data-text="flashes_reduce"></button></div>
+      <span data-text="settings_sensitivity"></span>
+      <div class="row"><button type="button" id="slower" data-text="less"></button><output id="sens"></output><button type="button" id="faster" data-text="more"></button></div>
+      <span data-text="settings_tier"></span>
+      <div class="row"><button type="button" data-act="tier" data-value="0" data-text="tier_low"></button><button type="button" data-act="tier" data-value="1" data-text="tier_medium"></button><button type="button" data-act="tier" data-value="2" data-text="tier_high"></button></div>
+    </div>
+    <p class="controls" data-text="controls"></p>
+    <button type="button" id="resume" class="big" data-text="resume"></button>
+  </div>
+
+  <div id="dead" class="screen" hidden>
+    <h2 data-text="dead_heading"></h2>
+    <p data-text="dead_text"></p>
+    <button type="button" id="retry" class="big" data-text="retry"></button>
+  </div>
+
+  <div id="won" class="screen" hidden>
+    <h2 data-text="won_heading"></h2>
+    <p data-text="won_text"></p>
+    <button type="button" id="again" class="big" data-text="again"></button>
+  </div>
+
+  <p id="message" role="status"></p>
+  <noscript><p>This page needs JavaScript and WebAssembly.</p></noscript>
+  <script type="module" src="app.js?v=a14d85b63932"></script>
+</body>
+</html>

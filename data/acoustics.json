@@ -1,0 +1,11 @@
+{
+  "_note": "Journal tab 4: each reverb class's decay (RT60, ms) and wet level, in Mall's Reverb order (crates/core/src/mall.rs); the impulse responses are made by the core from these (api::Game::impulse).",
+  "reverbs": [
+    { "key": "store_soft", "decay_ms": 500, "wet": 0.7 },
+    { "key": "store_hard", "decay_ms": 800, "wet": 0.8 },
+    { "key": "corridor", "decay_ms": 1800, "wet": 1.0 },
+    { "key": "atrium", "decay_ms": 3200, "wet": 1.1 },
+    { "key": "restroom", "decay_ms": 1200, "wet": 1.0 },
+    { "key": "concrete", "decay_ms": 1400, "wet": 0.9 }
+  ]
+}
