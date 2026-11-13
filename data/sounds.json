@@ -886,9 +886,11 @@
    "filter": "lowpass",
    "filter_hz": 240,
    "q": 0.9,
-   "level": 0.25,
+   "level": 0.13,
    "wobble_hz": 0.13,
-   "wobble": 0.25
+   "wobble": 0.12,
+   "wobble2_hz": 0.037,
+   "wobble2": 0.1
   },
   "chant": {
    "kind": "tone",
@@ -906,11 +908,13 @@
    "wave": "square",
    "tone_hz": 120,
    "filter": "bandpass",
-   "filter_hz": 1800,
-   "q": 4.0,
-   "level": 0.12,
-   "wobble_hz": 7.0,
-   "wobble": 0.3
+   "filter_hz": 900,
+   "q": 1.5,
+   "level": 0.06,
+   "wobble_hz": 2.9,
+   "wobble": 0.12,
+   "wobble2_hz": 0.21,
+   "wobble2": 0.1
   },
   "drip": {
    "kind": "tone",

@@ -67,6 +67,7 @@ One row per assumption, surprise or open item. **Kind** is *divergence* (what wa
 | R11.2 | divergence | T20: the court "should be the darkest room" | The fuse box (T14) cut the court's lamps, which are gone | The ring's candles are electric and run from the fuse box: throw it and the ring goes black. In the dark court a light-off player is not seen, so the breaker matters when your light is on; the cult's deafness in the sudden dark and `NOTICE_FLOOR` no longer changed any test's outcome and were taken out | `mall::breaker_feeds`; `with_the_breaker_thrown_…` | done |
 | R11.3 | divergence | T20: darker | Numbers chosen, not measured on a screen | Ambient 1/700, fog 1/2000, no brightening of the dark; yours to judge (R9.6) | `view::AMBIENT`, `FOG`; `world::EXPOSURE_DARK` | done |
 | R11.4 | finding | T19 fixed the stuck spirit | My route test carried you only by the wing; the spirit's way of choosing doorways (by where your sound seemed to come from) can lead it into a doorway that goes nowhere | Rewritten to the fewest rooms; tested on four ways out through stores | `World::next_waypoint`; `the_spirit_never_stalls_…`, `the_spirit_takes_the_fewest_rooms` | done |
+| R11.5 | divergence | T22 names "the electricity" | Two beds could be it: the air-handling hum (a slow wobble) and the lamps' buzz (a fast one) | Both softened and made irregular; the cult's chant is unchanged. No test hears sound: yours to judge | `data/sounds.json` beds; `web/audio.js` | person |
 
 ## Strings written by the agent
 

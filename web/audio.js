@@ -168,6 +168,16 @@ export function makeAudio(recipes, rooms, makeNoise, makeImpulse) {
       const depth = ctx.createGain();
       depth.gain.value = r.level * r.wobble;
       lfo.connect(depth).connect(wob.gain);
+      // a second, slower wobble at an unrelated rate, so the bed never
+      // settles into a regular beat (T22)
+      if (r.wobble2_hz) {
+        const lfo2 = ctx.createOscillator();
+        lfo2.frequency.value = r.wobble2_hz;
+        const depth2 = ctx.createGain();
+        depth2.gain.value = r.level * r.wobble2;
+        lfo2.connect(depth2).connect(wob.gain);
+        lfo2.start();
+      }
       const gain = ctx.createGain();
       gain.gain.value = 0;
       const lp = ctx.createBiquadFilter();

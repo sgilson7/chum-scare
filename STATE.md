@@ -20,11 +20,12 @@ Stage 8 done: the first version is live at https://sgilson7.github.io/chum-scare
 - Fuse box (T14): E throws it (court lamps out 40 s, cult blind and deaf 12 s), a shot puts it out for good. Spirit rises in the far back corner and stands 3 s (T15). Darker: ambient 1/250, fog 1/600, exposure ≤ 1.05, lamps ×1.5 (T16).
 - Scares (T17 to T19): director scares hush the room 3 s with a `dread` swell; own steps at half; stranger's steps heavy, nearing; knock and whisper kinds; apparitions (eyes, smile, hands) wait at the screen's edge until looked at; spirit glimpses 1.25 s; the spirit stares 3 s, screams, comes at 1 m/s to 3.6 over 20 s, follows your trail, never sits on a doorway.
 - T20: director wakes past the doors; ceilings 1, 3, 4, 5, 6 a minute; apparitions nearer, larger, every 15 s; ambient 1/700, fog 1/2000, no dark brightening; court unlit but for the ring's candles, which the fuse box feeds. T21: the spirit routes by the fewest rooms.
-- Notebook R1.1 to R11.4; person rows R1.6 (Blender models, now with the girl and curios), R1.11 (lists to read), R5.5 (play the court), R8.2 (approve the signs), R9.6 (judge the darkness).
+- T22: hum and buzz at half, each with a second slow wobble (`wobble2`).
+- Notebook R1.1 to R11.5; person rows R1.6 (Blender models, now with the girl and curios), R1.11 (lists to read), R5.5 (play the court), R8.2 (approve the signs), R9.6 (judge the darkness).
 
 ## What is next
 
-1. The person plays the court (R5.5), says what stopped them after the cult (R7.2) and reads the signs (R8.2) and judges the darkness (R9.6); next T row: T22.
+1. The person plays the court (R5.5), says what stopped them after the cult (R7.2) and reads the signs (R8.2) and judges the darkness (R9.6) and the hum (R11.5); next T row: T23.
 2. Open: R2.6 (hand is one Verlet point), R3.4 (dust motes, bounce light); person rows R1.6, R1.11.
 
 ## Cards the next session needs
