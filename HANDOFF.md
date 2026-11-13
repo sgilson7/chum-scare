@@ -2,7 +2,7 @@
 
 Stage 9, written by the agent. `C5 Consolidate in your own words`. A fresh session starts from this file, not from memory.
 
-Commit: f07054f
+Commit: 2f4d5cd
 
 ## What this is
 
@@ -19,6 +19,8 @@ Chum Scare: a first-person horror game in a desktop browser, built on Chumontill
 | CH-7 a broken light gives none | `lights.rs`, `view.rs` tests |
 | CH-10 no bunny hop, strafe gain, slide, wall jump or slam | `world/tests.rs` |
 | CH-11 the mouse moves the hand, not the view, while the hands are out | `with_the_hands_out_the_mouse_moves_the_hand_and_not_the_view` |
+| T4 signs hang facing one way; they turn only in the chase | `signs_keep_the_way_they_face_while_you_walk`, `in_the_chase_the_signs_turn_…`, `a_sign_hangs_facing_its_way_…` |
+| T3 volume is a percent kept with the settings | `the_volume_is_a_percent_kept_with_the_settings` |
 | D17 changed: only `web/save/store.js` keeps the settings text | `storage_fence.rs` |
 
 ## Shape of the code
@@ -41,6 +43,7 @@ Chum Scare: a first-person horror game in a desktop browser, built on Chumontill
 
 - Ground acceleration must stay at or above friction or the walk crawls (R2.4).
 - The page and shaders may hold no number but 0 and 1: new numbers go in `data/` or `numbers()`.
+- Signs are HTML drawn through a CSS `matrix3d` the core computes (`view::sign_matrix`); the page only applies it (R4.3).
 - Headless browsers refuse pointer lock: `web/input.js` falls back to plain mouse movement.
 
 ## For the person
@@ -57,3 +60,4 @@ Chum Scare: a first-person horror game in a desktop browser, built on Chumontill
 | When | Session | Calls | Context at first plan | Peak | Mean | Compactions | Re-read | Above 200k |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-13 00:00 | 9db705ea | 158 | 154k (call 38) | 517k | 309k | 0 | 48.4M | 44% |
+| 2026-11-13 09:45 | 9db705ea | 238 | 154k (call 38) | 552k | 299k | 1 | 70.6M | 45% |
