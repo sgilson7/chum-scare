@@ -2,7 +2,7 @@
 
 Stage 9, written by the agent. `C5 Consolidate in your own words`. A fresh session starts from this file, not from memory.
 
-Commit: 2f4d5cd
+Commit: eb4d0c5
 
 ## What this is
 
@@ -43,6 +43,7 @@ Chum Scare: a first-person horror game in a desktop browser, built on Chumontill
 
 - Ground acceleration must stay at or above friction or the walk crawls (R2.4).
 - The page and shaders may hold no number but 0 and 1: new numbers go in `data/` or `numbers()`.
+- The scare census: `cargo run --release -p tool_core --example census -- 200 > notes/census/runs.jsonl`, then `python3 tools/census.py`; the journal's page 8 is built from `notes/census/parts.json` (T5).
 - Signs are HTML drawn through a CSS `matrix3d` the core computes (`view::sign_matrix`); the page only applies it (R4.3).
 - Headless browsers refuse pointer lock: `web/input.js` falls back to plain mouse movement.
 
@@ -62,3 +63,4 @@ Chum Scare: a first-person horror game in a desktop browser, built on Chumontill
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-13 00:00 | 9db705ea | 158 | 154k (call 38) | 517k | 309k | 0 | 48.4M | 44% |
 | 2026-11-13 09:45 | 9db705ea | 238 | 154k (call 38) | 552k | 299k | 1 | 70.6M | 45% |
+| 2026-11-13 11:47 | 9db705ea | 335 | 154k (call 38) | 552k | 278k | 1 | 92.2M | 39% |
