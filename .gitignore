@@ -10,3 +10,6 @@ __pycache__/
 /refs/
 /OPENING.md
 /SETUP.md
+# the census runs (10 MB) are rebuilt by: cargo run --release -p tool_core --example census -- 200
+/notes/census/runs.jsonl
+/notes/census/parts.json

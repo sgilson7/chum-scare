@@ -509,3 +509,123 @@ fn settings_kept_as_text_come_back_and_bad_text_leaves_the_defaults() {
     u.act("settings", "not json").unwrap();
     assert_eq!(u.settings, Settings::default());
 }
+
+#[test]
+fn every_cult_post_stands_well_off_the_cursed_door() {
+    // T6, worked by hand: the ring at (70, −8) with posts 4 m out puts the
+    // nearest posts 17.9 m ((74, −8): √(16² + 8²)) and 18.6 m ((72, −4.54))
+    // from the cursed store's door (90, 0), and none nearer than 4.5 m to
+    // the line from the wing to that door (z = 0)
+    let w = playing();
+    for p in &w.mall.cultist_posts {
+        let door = v3(int(90), 0, 0).sub(*p).len_xz();
+        assert!(door > ONE * 175 / 10, "{}", fx::decimal(door, 2));
+        assert!(p.z < -ONE * 45 / 10, "{}", fx::decimal(p.z, 2));
+    }
+}
+
+#[test]
+fn from_the_court_doorway_you_can_watch_the_cult_unseen() {
+    // T6: standing in the lit doorway, light on, ten seconds, looking in
+    let mut w = playing();
+    w.flashlight.on = true;
+    for _ in 0..10 * HZ {
+        w.body.origin = v3(int(59), 0, 0);
+        w.body.velocity = V3::ZERO;
+        w.yaw = fx::deg(-90);
+        w.flashlight.charge = crate::lights::FULL;
+        w.tick(&Input::default());
+    }
+    for c in &w.cultists {
+        assert_eq!(c.suspicion, 0, "{:?}", c.at);
+    }
+}
+
+#[test]
+fn a_careful_player_gets_past_the_cult_on_the_north_side() {
+    // T6: wait at the doorway (where they cannot see you), then go
+    // crouched, light off, along the court's north wall at crouch pace,
+    // and spend six seconds at the cursed store's handle: no cultist
+    // attacks, whichever of four moments in the walkers' forty-second
+    // round you set off
+    for late in [0, 10, 20, 30] {
+        let mut w = playing();
+        w.flashlight.on = false;
+        let mut waited = 0;
+        loop {
+            w.body.origin = v3(int(59), 0, 0);
+            w.body.velocity = V3::ZERO;
+            w.yaw = fx::deg(-90);
+            w.tick(&Input::default());
+            waited += 1;
+            if waited > late * HZ as i32 {
+                break;
+            }
+        }
+        let path = [
+            v3(int(60), 0, int(2)),
+            v3(int(64), 0, int(13)),
+            v3(int(86), 0, int(13)),
+            v3(int(89), 0, 0),
+        ];
+        let pace = ONE * 52 / 100 / HZ as i32;
+        let mut at = path[0];
+        let mut seen = false;
+        for leg in path.windows(2) {
+            let way = leg[1].sub(leg[0]);
+            let n = way.len_xz() / pace;
+            for k in 0..n {
+                at = leg[0].add(way.scale(fx::div(k, n)));
+                w.body.origin = at;
+                w.body.velocity = V3::ZERO;
+                w.yaw = yaw_of(way);
+                w.tick(&keys(CROUCH));
+                seen |= w.cultists.iter().any(|c| c.mind == Mind::Attack);
+            }
+        }
+        for _ in 0..6 * HZ {
+            w.body.origin = at;
+            w.body.velocity = V3::ZERO;
+            w.yaw = fx::deg(-90);
+            w.tick(&keys(CROUCH));
+            seen |= w.cultists.iter().any(|c| c.mind == Mind::Attack);
+        }
+        // (the raffle car may still grab: that is the spirit, not the cult)
+        assert!(!seen, "going after {late} s");
+    }
+}
+
+#[test]
+fn a_careless_player_crossing_the_middle_lit_is_still_caught() {
+    // standing, flashlight on, straight from the wing to the cursed door
+    // at walking pace: within 14 m of the ring the cult sees and attacks
+    let mut w = playing();
+    w.flashlight.on = true;
+    let from = v3(int(60), 0, 0);
+    let way = v3(int(29), 0, 0);
+    // the walk, 1.3 m/s
+    let pace = TUNING.run / HZ as i32;
+    let n = way.len_xz() / pace;
+    let mut caught = false;
+    for k in 0..n {
+        w.body.origin = from.add(way.scale(fx::div(k, n)));
+        w.body.velocity = V3::ZERO;
+        w.yaw = fx::deg(-90);
+        w.flashlight.charge = crate::lights::FULL;
+        w.tick(&Input::default());
+        caught |= w.cultists.iter().any(|c| c.mind == Mind::Attack);
+    }
+    assert!(caught);
+}
+
+#[test]
+fn the_cursed_door_stands_in_moonlight_only() {
+    // T6, worked by hand from the fixture table: at the handle (89, 1.6, 0)
+    // no lamp, pendant or troffer is in range (the moved lamp at (84, 7, −12)
+    // is 14.1 m off, its reach 14 m); the moon (power 0.55, reach 26 m) is,
+    // over the dark's 1/6
+    let mut w = playing();
+    w.flashlight.on = false;
+    let at = v3(int(89), ONE * 16 / 10, 0);
+    assert_eq!(w.lit_at(at), ONE / 6 + 55 * ONE / 100);
+}

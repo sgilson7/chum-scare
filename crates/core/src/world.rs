@@ -1253,6 +1253,9 @@ impl World {
         let eye = self.eye();
         let hidden = matches!(self.mode, Mode::Hidden(_));
         let lit = self.lit_at(eye);
+        // T6: from the doorway you can watch them; inside the court (or
+        // once one is after you) they can see you
+        let in_court = self.mall.rooms[10].holds(me);
         let n = self.cultists.len();
         for i in 0..n {
             let mut c = self.cultists[i];
@@ -1265,12 +1268,14 @@ impl World {
             // sight: in its cone, a clear line, how lit you are
             let off = fx::wrap(yaw_of(to_me) - c.yaw).abs();
             let mut sight = 0;
-            if !hidden && dist < int(25) && off < fx::deg(55) && self.clear_line(ceye, eye) {
+            let looking_out = in_court || matches!(c.mind, Mind::Search | Mind::Attack);
+            if !hidden && looking_out && dist < int(25) && off < fx::deg(55) && self.clear_line(ceye, eye) {
                 let mut s = fx::div(lit, dist.max(ONE));
                 if self.body.ducked {
                     s /= 2;
                 }
-                sight = s;
+                // too dim or far to make out: nothing
+                sight = if s < NOTICE_FLOOR { 0 } else { s };
             }
             match c.mind {
                 Mind::Flee => {
@@ -1320,7 +1325,7 @@ impl World {
                         _ => {
                             if c.patrol {
                                 c.angle = (c.angle + fx::TURN / (HZ as i32 * 40)) % fx::TURN;
-                                let r = int(11);
+                                let r = mall::PATROL_R;
                                 (
                                     self.mall.ring.add(v3(
                                         fx::mul(r, fx::cos(c.angle)),
@@ -1603,6 +1608,10 @@ pub fn per_minute(menace: i32) -> i32 {
     [1, 2, 3, 3, 4][menace.clamp(0, 4) as usize]
 }
 
+/// The least a cultist can make out (T6): crouched with the light off, a
+/// few metres off in lamplight, you are a shadow.
+pub const NOTICE_FLOOR: Fx = ONE / 30;
+
 /// How far a sign turns toward you each tick of the chase: 30° a second.
 pub const SIGN_TURN: i32 = fx::deg(1) / 2;
 
@@ -1670,6 +1679,8 @@ fn ray_ball(o: V3, dir: V3, c: V3, r: Fx) -> Option<Fx> {
     }
     Some(along)
 }
+
+pub mod census;
 
 #[cfg(test)]
 mod tests;

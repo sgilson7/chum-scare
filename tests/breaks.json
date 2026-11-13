@@ -40,5 +40,47 @@
     "find": ".unwrap_or(100)",
     "replace": ".unwrap_or(0)",
     "test": "the_volume_is_a_percent_kept_with_the_settings"
+  },
+  {
+    "name": "the cult sees you only inside the court (T6)",
+    "file": "crates/core/src/world.rs",
+    "find": "let looking_out = in_court || matches!(c.mind, Mind::Search | Mind::Attack);",
+    "replace": "let looking_out = true;",
+    "test": "from_the_court_doorway_you_can_watch_the_cult_unseen"
+  },
+  {
+    "name": "the ring stands off the cursed door (T6)",
+    "file": "crates/core/src/mall.rs",
+    "find": "    x: 70 * ONE,",
+    "replace": "    x: 80 * ONE,",
+    "test": "every_cult_post_stands_well_off_the_cursed_door"
+  },
+  {
+    "name": "a lit careless walker is still caught (T6)",
+    "file": "crates/core/src/world.rs",
+    "find": "let starts_attacking = c.suspicion >= ONE && sight > ONE / 12 && dist < int(14);",
+    "replace": "let starts_attacking = false;",
+    "test": "a_careless_player_crossing_the_middle_lit_is_still_caught"
+  },
+  {
+    "name": "the census holds the button while the hands are out (T5)",
+    "file": "crates/core/src/world/census.rs",
+    "find": "buttons: if hands && w.mode != Mode::Look { ALT } else { 0 },",
+    "replace": "buttons: 0,",
+    "test": "the_census_walks_the_whole_route_and_gets_out"
+  },
+  {
+    "name": "too faint to make out is nothing (T6)",
+    "file": "crates/core/src/world.rs",
+    "find": "sight = if s < NOTICE_FLOOR { 0 } else { s };",
+    "replace": "sight = s;",
+    "test": "a_careful_player_gets_past_the_cult_on_the_north_side"
+  },
+  {
+    "name": "the cursed door is out of the lamps' reach (T6)",
+    "file": "crates/core/src/mall.rs",
+    "find": "fixtures.push(f(FixtureKind::Lamp, 840, 70, -120, warm, 70, 140, true));",
+    "replace": "fixtures.push(f(FixtureKind::Lamp, 820, 70, 80, warm, 70, 140, true));",
+    "test": "the_cursed_door_stands_in_moonlight_only"
   }
 ]

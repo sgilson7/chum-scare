@@ -25,6 +25,12 @@ files = ["web/**", "data/**"]
 steps = ["core", "build", "wasm", "browser"]
 
 [[rule]]
+name = "the scare census report (T5)"
+# it only reads what the core's census wrote; the census tests are core tests
+files = ["tools/census.py"]
+steps = ["core"]
+
+[[rule]]
 name = "the words"
 files = ["GLOSSARY.md", "TONE.md"]
 steps = ["core"]

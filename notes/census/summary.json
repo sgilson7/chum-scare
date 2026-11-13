@@ -1,0 +1,135 @@
+{
+ "methodical": {
+  "player": "methodical",
+  "runs": 200,
+  "minutes_before_chase": 4.19,
+  "scares_per_run": 6.88,
+  "scares_per_minute": 1.64,
+  "first_scare_s": 5.9,
+  "gap_median_s": 31.9,
+  "gap_p90_s": 74.1,
+  "gap_longest_s": 101.7,
+  "busy_share": 0.33,
+  "busy_minutes": 0.64,
+  "minutes_at_menace": [
+   0.57,
+   0.7,
+   1.13,
+   1.66,
+   0.14
+  ],
+  "rate_at_menace": [
+   1.76,
+   0.47,
+   1.71,
+   2.01,
+   2.14
+  ],
+  "kinds": {
+   "steps": 467,
+   "fall_crash": 462,
+   "door_creak": 183,
+   "shutter": 119,
+   "laugh": 61,
+   "pop_glass": 46,
+   "breath": 39
+  },
+  "where": {
+   "sight": {
+    "behind": 204,
+    "beside": 224,
+    "centre": 43,
+    "edge": 1429
+   },
+   "sound": {
+    "beside": 873,
+    "behind": 2024,
+    "edge": 9,
+    "centre": 5
+   }
+  },
+  "glimpses_per_run": 7.26,
+  "glimpse_off": [
+   [
+    55,
+    1429
+   ],
+   [
+    61,
+    24
+   ]
+  ],
+  "glimpse_dist_m": 7.0,
+  "mannequin_turns_per_run": 0.02,
+  "possession_steps_per_run": 2.0,
+  "possession_knocks_per_run": 3.0,
+  "cult_caught_share": 0.0,
+  "hurt_ticks": 0,
+  "escaped": 200
+ },
+ "brisk": {
+  "player": "brisk",
+  "runs": 200,
+  "minutes_before_chase": 1.69,
+  "scares_per_run": 2.68,
+  "scares_per_minute": 1.59,
+  "first_scare_s": 4.9,
+  "gap_median_s": 62.6,
+  "gap_p90_s": 80.8,
+  "gap_longest_s": 93.3,
+  "busy_share": 0.65,
+  "busy_minutes": 0.37,
+  "minutes_at_menace": [
+   0.36,
+   0.23,
+   0.36,
+   0.6,
+   0.14
+  ],
+  "rate_at_menace": [
+   2.79,
+   0.0,
+   0.0,
+   2.23,
+   2.44
+  ],
+  "kinds": {
+   "fall_crash": 263,
+   "steps": 107,
+   "door_creak": 103,
+   "breath": 50,
+   "pop_glass": 9,
+   "laugh": 4
+  },
+  "where": {
+   "sight": {
+    "behind": 200,
+    "edge": 530,
+    "centre": 9,
+    "beside": 33
+   },
+   "sound": {
+    "beside": 272,
+    "behind": 878
+   }
+  },
+  "glimpses_per_run": 2.81,
+  "glimpse_off": [
+   [
+    55,
+    530
+   ],
+   [
+    61,
+    33
+   ]
+  ],
+  "glimpse_dist_m": 7.0,
+  "mannequin_turns_per_run": 0.0,
+  "possession_steps_per_run": 1.0,
+  "possession_knocks_per_run": 2.0,
+  "cult_caught_share": 1.0,
+  "hurt_ticks": 33,
+  "escaped": 200
+ }
+}

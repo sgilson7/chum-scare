@@ -192,6 +192,16 @@ const fn d(n: i32) -> Fx {
 }
 
 const WALL: Fx = ONE * 3 / 10;
+/// The cult's ring: its centre (was x 75, z 0, T6) and the posts' radius
+/// (was 5 m).
+pub const RING: V3 = V3 {
+    x: 70 * ONE,
+    y: 0,
+    z: -8 * ONE,
+};
+pub const RING_R: Fx = 4 * ONE;
+/// The two walkers circle the ring this far out (was 11 m).
+pub const PATROL_R: Fx = 6 * ONE;
 
 pub const OLD_TILE: [i32; 3] = [118, 110, 96];
 const DIRTY_PLASTER: [i32; 3] = [132, 124, 108];
@@ -543,7 +553,9 @@ pub fn mall() -> Mall {
             }
         };
     let mut fixtures = Vec::new();
-    for (k, x) in [40, 110, 190, 260, 340, 410, 490, 560].iter().enumerate() {
+    // T6: no pendant at 56 m: it lit the first 6 m of the court, where you
+    // stop to look in
+    for (k, x) in [40, 110, 190, 260, 340, 410, 490].iter().enumerate() {
         fixtures.push(f(
             FixtureKind::Pendant,
             *x,
@@ -592,7 +604,9 @@ pub fn mall() -> Mall {
     fixtures.push(f(FixtureKind::Lamp, -40, 32, 170, [255, 200, 150], 45, 70, true));
     fixtures.push(f(FixtureKind::Lamp, 250, 32, 170, [255, 200, 150], 45, 70, false));
     fixtures.push(f(FixtureKind::Lamp, 680, 70, -80, warm, 70, 140, false));
-    fixtures.push(f(FixtureKind::Lamp, 820, 70, 80, warm, 70, 140, true));
+    // T6: the flickering lamp hangs over the cult's side (was x 82, z 8):
+    // the cursed door stands in moonlight only
+    fixtures.push(f(FixtureKind::Lamp, 840, 70, -120, warm, 70, 140, true));
     fixtures.push(f(FixtureKind::Candle, 990, 9, 5, [255, 170, 90], 40, 50, false));
     fixtures.push(f(
         FixtureKind::Candle,
@@ -606,15 +620,18 @@ pub fn mall() -> Mall {
     ));
     fixtures.push(f(FixtureKind::Moon, 750, 120, 0, [140, 160, 210], 55, 260, false));
 
-    let ring = v3(i(75), 0, 0);
+    // T6: the ring sits in the court's south-west, off the line between
+    // the wing and the cursed store and nearly 18 m from the cursed door;
+    // the north half (the raffle car's side) is the way past
+    let ring = RING;
     let mut cultist_posts = Vec::new();
     for k in 0..6 {
         let a = k * 65536 / 6;
-        let r = i(5);
+        let r = RING_R;
         cultist_posts.push(v3(
             ring.x + crate::fx::mul(r, crate::fx::cos(a)),
             0,
-            crate::fx::mul(r, crate::fx::sin(a)),
+            ring.z + crate::fx::mul(r, crate::fx::sin(a)),
         ));
     }
     // the ring's candles: one at each post
